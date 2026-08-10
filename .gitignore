@@ -43,3 +43,6 @@ docs/WORKFLOW.md
 # Specification for authentication, which is not built. Shipping a document that describes
 # security controls the artifact does not have is worse than shipping no document.
 docs/AUTH.md
+
+# Local working notes — design proposals, review outcomes. Not deliverables.
+*.local.md
