@@ -41,10 +41,13 @@ flowchart LR
     API --> LOGS
 ```
 
-The `api` service waits on the `db` healthcheck, applies migrations, then seeds if the
-database is empty. There is no manual database-creation step: compose creates the role and
-database from its `POSTGRES_*` environment, the API waits on the healthcheck rather than on a
-sleep, and then applies migrations itself.
+There is no manual database-creation step: compose creates the role and database from its
+`POSTGRES_*` environment, the API waits on the `db` healthcheck rather than on a sleep, and then
+applies migrations itself.
+
+**The database comes up empty.** There is no seeder yet, so a reviewer following the README's quick
+start creates the first rows themselves. Seeding is planned and will be gated behind a
+`SEED_ON_STARTUP` flag, which is deliberately absent from `compose.yaml` until something reads it.
 
 Migrating on startup is a convenience decision, not a recommendation. In production, migrations
 run as a separate deployment step — with several replicas, every instance would otherwise race to
