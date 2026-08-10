@@ -93,14 +93,17 @@ created pressure to loosen the rule that actually matters.
 ## 3. Domain model
 
 > **PARTIAL.** Only `BOOK` exists in code today, with the `Isbn` value object and its unique
-> index. `BOOK_COPY`, `MEMBER`, `LOAN` and `USER_ACCOUNT` below are the intended model.
+> index. `BOOK_COPY`, `MEMBER` and `LOAN` below are the intended model.
+>
+> There is deliberately **no user or credential table**. Authentication would come from an
+> external OIDC provider, so identities live there and this service stores no passwords — see
+> [AUTHORIZATION.md](AUTHORIZATION.md). A `Member` is a library borrower, not a login.
 
 ```mermaid
 erDiagram
     BOOK ||--o{ BOOK_COPY : "has"
     BOOK_COPY ||--o{ LOAN : "loaned in"
     MEMBER ||--o{ LOAN : "borrows"
-    USER_ACCOUNT }o--|| MEMBER : "may authenticate as"
 
     BOOK {
         uuid Id PK
@@ -130,14 +133,6 @@ erDiagram
         timestamptz DueAt
         timestamptz ReturnedAt "null = active"
         int RenewalCount
-    }
-    USER_ACCOUNT {
-        uuid Id PK
-        string Username UK
-        bytes PasswordHash "PBKDF2"
-        bytes PasswordSalt
-        string Role "librarian | member"
-        uuid MemberId FK "null for librarians"
     }
 ```
 
@@ -274,7 +269,7 @@ Enforcing it only in the aggregate is the mistake most submissions make.
 | Health | `/health/ready` — readiness with a database probe | not built |
 | Request logging | one enriched line per request: method, path, status, elapsed | not built |
 | Correlation | middleware generating and echoing `X-Correlation-Id`, pushed as a log scope so every line in a request carries it | not built |
-| AuthN/AuthZ | JWT bearer with `FallbackPolicy = RequireAuthenticatedUser` — default-deny, so a forgotten attribute causes a 401 rather than a silent hole | not built |
+| AuthN/AuthZ | JWT bearer against an external OIDC provider, `FallbackPolicy = RequireAuthenticatedUser` — default-deny, so a forgotten attribute causes a 401 rather than a silent hole. Design and seams in [AUTHORIZATION.md](AUTHORIZATION.md) | **not built, by decision** |
 | Rate limiting | fixed window on write endpoints | not built |
 
 The logging rows deserve one clarification, since a reader may expect a named library: logging

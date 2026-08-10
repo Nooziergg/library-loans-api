@@ -31,7 +31,11 @@ working API:
   these and marks them clearly as unbuilt
 - Update and delete on books; list, filter, search and pagination
 - Seed data — the database starts empty
-- Authentication and authorization
+- **Authentication and authorization — deliberately.** Every endpoint is anonymous. The brief
+  does not ask for auth, and the budget went to the domain invariants it does ask for. The
+  decision, the intended design (an external OIDC provider, default-deny, and why role rules and
+  resource permissions belong in different layers) and the seams in code are in
+  [docs/AUTHORIZATION.md](docs/AUTHORIZATION.md)
 
 **Deliberately out of scope**, and recorded as judgement rather than omission: distributed
 caching, OpenTelemetry, CQRS read models, event sourcing, a microservice split, and an external
@@ -195,6 +199,7 @@ a rule only in application code leaves it true only most of the time.
 | Document | Contents |
 |---|---|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Layers and the dependency rule, domain model, request flow, cross-cutting concerns. Marks clearly which parts are built. |
+| [docs/AUTHORIZATION.md](docs/AUTHORIZATION.md) | **Not implemented.** Why, what would be used, and where the seams are |
 | [docs/PREREQUISITES.md](docs/PREREQUISITES.md) | What to install — Docker only, to run it |
 
 ## License

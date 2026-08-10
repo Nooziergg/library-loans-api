@@ -35,6 +35,60 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+//  AUTHENTICATION AND AUTHORIZATION — NOT IMPLEMENTED. This is the seam, described.
+//
+//  Every endpoint in this service is currently anonymous. That is a deliberate scope decision,
+//  not an oversight, and docs/AUTHORIZATION.md explains the reasoning and the intended design.
+//  The seam is marked here because "where would auth go" is the question worth answering, and
+//  because an omission that is documented at the point it would live reads differently from one
+//  a reader has to discover.
+//
+//  What would be registered here:
+//
+//      builder.Services
+//          .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+//          .AddJwtBearer(options =>
+//          {
+//              // Entra ID / any OIDC provider. Authority + Audience only — no signing key
+//              // lives in this service, because validation uses the provider's published
+//              // JWKS. Nothing to leak, nothing to rotate here.
+//              options.Authority = builder.Configuration["Auth:Authority"];
+//              options.Audience  = builder.Configuration["Auth:Audience"];
+//              options.TokenValidationParameters = new()
+//              {
+//                  ValidateIssuer = true, ValidateAudience = true,
+//                  ValidateLifetime = true, ValidateIssuerSigningKey = true,
+//              };
+//          });
+//
+//      builder.Services.AddAuthorization(options =>
+//      {
+//          // DEFAULT-DENY. This single line is the most important one in the block: every
+//          // endpoint requires an authenticated caller unless it explicitly opts out, so a
+//          // forgotten attribute produces a 401 rather than a silent hole. The inverse —
+//          // middleware that allows a request when no rule matched — is a fail-open design,
+//          // and it fails quietly, which is the worst combination available.
+//          options.FallbackPolicy = new AuthorizationPolicyBuilder()
+//              .RequireAuthenticatedUser()
+//              .Build();
+//
+//          // ROLE RULES: coarse-grained, who may perform a class of operation at all.
+//          options.AddPolicy("RequireLibrarian", policy => policy.RequireRole("librarian"));
+//          options.AddPolicy("RequireMember",    policy => policy.RequireRole("member"));
+//      });
+//
+//  PERMISSION RULES go somewhere different, and the distinction matters. "Is this caller a
+//  librarian" is a role check and belongs in a policy. "Is this caller allowed to act on THIS
+//  member's loans" depends on the resource, cannot be answered from claims alone, and belongs
+//  in the handler as a domain rule — a member may borrow and return only as themselves, while
+//  a librarian may act for anyone. Pushing resource-scoped decisions into policies is how they
+//  end up duplicated per endpoint and inconsistent.
+//
+//  Note what would NOT change: the Domain and Application layers. No aggregate learns what a
+//  role is. That is the dependency rule paying off rather than being asserted.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
 var app = builder.Build();
 
 // First in the pipeline, so anything thrown downstream becomes a ProblemDetails rather than
@@ -51,9 +105,18 @@ if (app.Configuration.GetValue<bool>("MIGRATE_ON_STARTUP"))
     await app.Services.ApplyMigrationsAsync(app.Lifetime.ApplicationStopping);
 }
 
+// app.UseAuthentication();
+// app.UseAuthorization();
+//   ^ would go here, before endpoint routing. Order is not stylistic: authentication must run
+//     before authorization, and both before the endpoint executes.
+
 // Liveness deliberately touches no dependency. If the database is briefly unreachable the
 // process is still alive and should not be killed and restarted by the orchestrator — that is
 // what a readiness probe is for, and the two must not be conflated.
+//
+// This is one of the two endpoints that would carry .AllowAnonymous() under the default-deny
+// policy above — an orchestrator's probe has no token to present. The other is the readiness
+// probe. Everything else would require a caller.
 app.MapHealthChecks("/health/live");
 
 // Served at /openapi/v1.json. Deliberately no Swagger UI: that would mean a third-party package
@@ -65,6 +128,13 @@ app.MapOpenApi();
 // single group in one line, instead of to every endpoint individually where one omission is a
 // hole nobody notices.
 var api = app.MapGroup("/api/v1");
+
+// api.RequireAuthorization();
+//   ^ one line, attached to the group, would put every versioned endpoint behind authentication
+//     at once. This is the whole reason the group exists up front rather than being retrofitted:
+//     the alternative is an attribute per endpoint, where the fifteenth one added under deadline
+//     pressure is the one nobody remembers.
+
 api.MapBooks();
 
 app.Run();

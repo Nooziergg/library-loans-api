@@ -24,12 +24,24 @@ internal static class BooksEndpoints
     {
         var books = api.MapGroup("/books").WithTags("Books");
 
+        // Authorization is not implemented — see the seam in Program.cs and the design in
+        // docs/AUTHORIZATION.md. The policy each endpoint would carry is noted inline, because
+        // the answer differs per endpoint and deciding it once per endpoint at the time the
+        // endpoint is written is how it stays consistent.
+
         books.MapPost("/", CreateAsync)
+            // .RequireAuthorization("RequireLibrarian")
+            //   Changing the catalogue is a staff operation. A borrower has no reason to be able
+            //   to add a title, and "nobody would try" is not an access control.
             .AddEndpointFilter<ValidationFilter<CreateBookRequest>>()
             .WithName("CreateBook")
             .WithSummary("Adds a title to the catalogue.");
 
         books.MapGet("/{id:guid}", GetByIdAsync)
+            // Reading the catalogue needs only an authenticated caller, which the group-level
+            // default-deny policy already provides — so no explicit policy here. Worth stating
+            // rather than leaving blank: an endpoint with no authorization line should be
+            // recognisably a decision, not an omission.
             .WithName(GetBookByIdRouteName)
             .WithSummary("Fetches a single title.");
 
