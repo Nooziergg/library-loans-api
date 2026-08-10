@@ -13,22 +13,37 @@ working API:
 
 - Clean Architecture across four projects, with the dependency rule enforced by a test rather
   than by convention
-- The **book catalogue** as a complete vertical slice: `POST /api/v1/books`,
-  `GET /api/v1/books/{id}`
+- **Every domain rule this system claims**, listed below, each enforced in the aggregate that owns
+  it — and the critical one enforced again by the database
+- Books, copies, members and loans: `POST /api/v1/books`, `GET /api/v1/books/{id}`,
+  `POST /api/v1/books/{bookId}/copies`, `POST /api/v1/members`, `POST /api/v1/loans`,
+  `POST /api/v1/loans/{id}/return`, `GET /api/v1/loans/{id}`
 - The `Isbn` value object, checksum-validated and canonicalised so one book has one
   representation
-- Uniqueness enforced **twice** — in the application and by a database constraint, with the
-  constraint violation translated back into the same domain error
 - RFC 7807 for every failure; exception messages never reach a client
-- EF Core on PostgreSQL, migration committed and applied on startup
-- 69 unit tests and 9 integration tests, the latter against a disposable PostgreSQL that
+- EF Core on PostgreSQL, migrations committed and applied on startup
+- An OpenAPI document at `/openapi/v1.json`
+- 139 unit tests and 21 integration tests, the latter against a disposable PostgreSQL that
   Testcontainers creates and destroys per run
+
+### The rules, and where each is enforced
+
+| Rule | In the aggregate | Also in the database |
+|---|---|---|
+| A copy cannot be on two active loans at once | `Loan.Open` | **partial unique index** `(book_copy_id) WHERE returned_at IS NULL` |
+| An ISBN must be structurally valid | `Isbn` | — |
+| One ISBN appears once in the catalogue | pre-check | unique index |
+| A barcode is unique across copies | pre-check | unique index |
+| A member holds at most 5 active loans | `Loan.Open` | — (accepted race, see below) |
+| A suspended member cannot borrow | `Loan.Open` | — |
+| A loan cannot be returned twice | `Loan.Return` | — |
+| A loan is due 14 days after it is taken | `Loan.Open` | check constraint |
 
 **Not built yet:**
 
-- `BookCopy`, `Member` and `Loan`, and therefore the loan rules — including "the same copy
-  cannot be on two active loans at once". [The architecture doc](docs/ARCHITECTURE.md) specifies
-  these and marks them clearly as unbuilt
+- Renewing a loan, retiring a copy, and reinstating a suspended member — each is a state
+  transition whose guarding rule is deferred with it, on the principle that a guard whose
+  precondition cannot be reached is a guard that cannot be tested
 - Update and delete on books; list, filter, search and pagination
 - Seed data — the database starts empty
 - **Authentication and authorization — deliberately.** Every endpoint is anonymous. The brief
@@ -96,6 +111,36 @@ curl -i -X POST http://localhost:8080/api/v1/books -H 'Content-Type: application
 curl -i -X POST http://localhost:8080/api/v1/books -H 'Content-Type: application/json' \
   -d '{"isbn":"9780306406157","publishedYear":1990}'
 ```
+
+### Watching the loan rule work
+
+The sequence worth running, because the last two steps are the whole argument. Substitute the ids
+returned by each call:
+
+```bash
+# a title, a physical copy of it, and a borrower
+curl -s -X POST localhost:8080/api/v1/books -H 'Content-Type: application/json' \
+  -d '{"isbn":"9780451524935","title":"Nineteen Eighty-Four","author":"George Orwell","publishedYear":1949}'
+curl -s -X POST localhost:8080/api/v1/books/<bookId>/copies -H 'Content-Type: application/json' \
+  -d '{"barcode":"COPY-0001"}'
+curl -s -X POST localhost:8080/api/v1/members -H 'Content-Type: application/json' \
+  -d '{"membershipNumber":"M00000001","name":"A Borrower","email":"borrower@example.test"}'
+
+# borrow it
+curl -s -X POST localhost:8080/api/v1/loans -H 'Content-Type: application/json' \
+  -d '{"memberId":"<memberId>","bookCopyId":"<copyId>"}'
+
+# borrow the same copy again -> 409, because it is already out
+curl -i -X POST localhost:8080/api/v1/loans -H 'Content-Type: application/json' \
+  -d '{"memberId":"<memberId>","bookCopyId":"<copyId>"}'
+
+# give it back, then borrow it again -> 201, because the index is partial rather than plain
+curl -s -X POST localhost:8080/api/v1/loans/<loanId>/return
+curl -i -X POST localhost:8080/api/v1/loans -H 'Content-Type: application/json' \
+  -d '{"memberId":"<memberId>","bookCopyId":"<copyId>"}'
+```
+
+The 409 and the 201 that follows it are the same index answering two different questions correctly.
 
 To start over from an empty database:
 
@@ -193,6 +238,35 @@ the outcome when two requests check microseconds apart — and the constraint vi
 translated back into the *identical* domain error, matched on constraint name so an unrelated
 collision is never reported as a duplicate. A client cannot tell which path rejected it. Enforcing
 a rule only in application code leaves it true only most of the time.
+
+**The loan index is *partial*, and that word is doing the work.**
+
+```sql
+CREATE UNIQUE INDEX ix_loans_active_copy ON loans (book_copy_id) WHERE returned_at IS NULL;
+```
+
+Without the `WHERE`, this reads "a copy may appear in the loans table at most once" — meaning a
+returned book could never be borrowed again. With it, the constraint applies only to loans still
+outstanding, which expresses a *temporal* invariant as a *static* index. That distinction is
+invisible to almost every test one would think to write, so there is a test for exactly it:
+`Borrows_the_same_copy_again_after_it_has_been_returned`, written before the migration existed.
+
+It also settles a race the application cannot see: a return running concurrently with a re-borrow
+of the same copy, where the new row cannot land while the old one still has a null `returned_at`.
+
+And it pays twice. There is no availability or status column on a copy, because "on loan" is
+derived state that a stored column could contradict — and the query that replaces it,
+`NOT EXISTS (SELECT 1 FROM loans WHERE book_copy_id = c.id AND returned_at IS NULL)`, is served by
+this same index. **The index that makes the invariant true is the index that makes the availability
+query fast.**
+
+**One race is accepted, deliberately.** Two concurrent borrows can both read a member's active-loan
+count as four and both proceed, leaving them holding six. There is no constraint behind that limit,
+and the reasoning is written at the guard: a member briefly over their limit is a policy annoyance a
+librarian can unwind, while the same physical book promised to two people is a failure the library
+cannot honour. Only the second is worth the cost of a database constraint. The same judgement
+applies to a double return, where the outcome is idempotent in substance and nothing is promised
+twice.
 
 ## Documentation
 

@@ -14,9 +14,9 @@
 > |---|---|
 > | 1. Deployment view | **BUILT** — `docker compose up` yields a migrated, working API |
 > | 2. Layers and the dependency rule | **BUILT** — and enforced by a test |
-> | 3. Domain model | **PARTIAL** — `Book` only; `BookCopy`, `Member`, `Loan`, `UserAccount` are design |
-> | 4. State machines | **DESIGNED, NOT BUILT** |
-> | 5. Request flow — the borrow path | **DESIGNED, NOT BUILT** — the *mechanism* it relies on is built and tested, on a different rule |
+> | 3. Domain model | **BUILT**, except two columns marked inline as designed-not-in-schema |
+> | 4. State machines | **PARTIAL** — Loan and Member built; BookCopy has no lifecycle state yet |
+> | 5. Request flow — the borrow path | **BUILT** |
 > | 6. Cross-cutting concerns | **MIXED** — marked per row |
 > | 7. Reading order for a reviewer | **BUILT** — only existing files are listed |
 >
@@ -95,8 +95,22 @@ created pressure to loosen the rule that actually matters.
 
 ## 3. Domain model
 
-> **PARTIAL.** Only `BOOK` exists in code today, with the `Isbn` value object and its unique
-> index. `BOOK_COPY`, `MEMBER` and `LOAN` below are the intended model.
+> **BUILT**, with two exceptions marked inline: `BOOK_COPY.RetiredAt` and `LOAN.RenewalCount` are
+> designed but not in the schema — they arrive with copy retirement and renewals.
+>
+> **There is no availability or status column on `BOOK_COPY`, and that is the deliberate part.**
+> "On loan" is derived state: it is true exactly when a loan row exists for the copy with a null
+> `ReturnedAt`. Storing it would mean writing two tables on every borrow, and would create a column
+> that can disagree with the loans table — which is precisely the corruption the partial unique
+> index exists to prevent, and which that index could not police, since it constrains `LOAN` only.
+>
+> The alternative was weighed rather than overlooked. A materialised availability flag turns
+> "which copies are free" from an anti-join into an index seek, which is a real design at real
+> scale, and the only ways to keep such a flag honest are a trigger, a materialised view, or
+> discipline. It costs nothing to decline here, because
+> `NOT EXISTS (SELECT 1 FROM loans WHERE book_copy_id = c.id AND returned_at IS NULL)` is served by
+> `ix_loans_active_copy` itself — **the index that makes the invariant true is the same index that
+> makes the availability query fast.**
 >
 > There is deliberately **no user or credential table**. Authentication would come from an
 > external OIDC provider, so identities live there and this service stores no passwords — see
@@ -119,7 +133,7 @@ erDiagram
         uuid Id PK
         uuid BookId FK
         string Barcode UK
-        string Status "Available | OnLoan | Retired"
+        timestamptz RetiredAt "DESIGNED, not in the schema — null = in service"
     }
     MEMBER {
         uuid Id PK
@@ -141,15 +155,17 @@ erDiagram
 
 ## 4. State machines
 
-> **DESIGNED, NOT BUILT.** None of the three aggregates below exist in code yet. This section is
-> the specification they will be built against.
+> **PARTIAL**, per aggregate:
+> **Loan — BUILT.** **Member — BUILT.** **BookCopy — DESIGNED, NOT BUILT**, because the copy has no
+> lifecycle state yet; it is `{ Id, BookId, Barcode }` in code.
+>
+> Transitions shown below that have no method behind them are labelled where they appear.
 
 ### Loan
 
 ```mermaid
 stateDiagram-v2
     [*] --> Active: Loan.Open()
-    Active --> Active: Renew() — max 2, and only if not overdue
     Active --> Returned: Return()
     Returned --> [*]
 
@@ -163,30 +179,54 @@ stateDiagram-v2
     end note
 ```
 
-Guards on `Loan.Open()` — all enforced inside the aggregate, none in a service:
-- the copy has no active loan (**also** a DB partial unique index)
-- the copy is not `Retired`
-- the member is `Active`, not `Suspended`
-- the member holds fewer than 5 active loans
+Guards on `Loan.Open()` — all enforced inside the aggregate, none in a service, and in this order:
 
-`Return()` on an already-returned loan is a **domain error**, not a silent no-op.
+1. the member is `Active`, not `Suspended`
+2. the member holds fewer than 5 active loans
+3. the copy has no active loan (**also** a database partial unique index)
 
-### BookCopy
+The order is deliberate. A caller's own eligibility is reported before the resource's, so a
+suspended member is told they are suspended rather than sent to look for a different copy. And the
+copy check is last precisely because it is the one the database also enforces — which keeps the
+"same error whichever layer noticed" property about a single, final guard.
+
+Only guard 3 is enforced twice, and the asymmetry is the argument: guard 2 can also be raced, and a
+member briefly holding six books is a policy annoyance a librarian can unwind, while the same
+physical book promised to two people is a failure the library cannot honour.
+
+`Return()` on an already-returned loan is a **domain error**, not a silent no-op. Two concurrent
+returns can both pass that guard — accepted, because the outcome is idempotent in substance and
+nothing is promised twice. The race that *is* arbitrated is more interesting: a return running
+concurrently with a re-borrow of the same copy, where the new row cannot land while the old one
+still has a null `ReturnedAt`.
+
+*Renewal is designed but not built: `Renew()`, capped at two and refused once overdue, arrives with
+`LOAN.RenewalCount`.*
+
+### BookCopy — DESIGNED, NOT BUILT
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Available: AddCopy()
-    Available --> OnLoan: loan opened
-    OnLoan --> Available: loan returned
-    Available --> Retired: Retire()
+    [*] --> InService: BookCopy.Add()
+    InService --> Retired: Retire()
     Retired --> [*]
 
-    note left of OnLoan
-        Retire() from OnLoan is rejected.
-        A copy in a borrower's hands
-        cannot be removed from the catalogue.
+    note right of InService
+        "On loan" is NOT a state of this aggregate.
+        It is a query over loans: an active row exists
+        for this copy. Storing it would put a column
+        here that can disagree with that table.
+
+        Retire() from a copy that is out is rejected —
+        a copy in a borrower's hands cannot be
+        removed from the catalogue.
     end note
 ```
+
+Only the `Add` transition exists in code. `BookCopy` is currently `{ Id, BookId, Barcode }` with no
+lifecycle state at all, and `Retire()` arrives with the copy-management endpoints. The rule
+governing it — a copy on loan cannot be retired — is deferred with it, on the principle that a
+guard whose precondition cannot be reached is a guard that cannot be tested.
 
 ### Member
 
@@ -194,29 +234,27 @@ stateDiagram-v2
 stateDiagram-v2
     [*] --> Active: Register()
     Active --> Suspended: Suspend()
-    Suspended --> Active: Reinstate()
 
     note right of Suspended
         Suspension is allowed while holding
         active loans — it blocks NEW borrows,
         it does not recall existing ones.
+
+        Suspending an already-suspended member
+        is a conflict, not a silent no-op.
     end note
 ```
 
+*Reinstatement is designed but not built: `Reinstate()` arrives with the member-management
+endpoints. Nothing in the current rule set needs the `Suspended → Active` transition, and adding a
+method with no caller and no invariant behind it would be a lever nobody pulls.*
+
 ## 5. Request flow — the borrow path
 
-> **DESIGNED, NOT BUILT.** `POST /loans` does not exist yet.
->
-> The *mechanism* this flow depends on, however, is built and proven against a real PostgreSQL —
-> just applied to a different rule. `CreateBookHandler` checks ISBN uniqueness in advance, the
-> unique index decides the outcome when two requests check simultaneously, and
-> `UnitOfWork` translates SQLSTATE 23505 back into the identical domain error by matching on
-> constraint name. `UniqueConstraintTranslationTests` proves that translation deterministically.
-> Porting it to the loan invariant is the next piece of work, and it is a port rather than an
-> invention.
+> **BUILT.**
 
-This is the sequence worth reading, because it shows the invariant enforced at two levels
-and what happens when a race is lost.
+This is the sequence worth reading, because it shows the invariant enforced at two levels and what
+happens when a race is lost.
 
 ```mermaid
 sequenceDiagram
@@ -224,27 +262,29 @@ sequenceDiagram
     participant EP as POST /api/v1/loans
     participant H as BorrowCopyHandler<br/>(Application)
     participant AG as Loan<br/>(Domain)
-    participant RP as ILoanRepository<br/>(Infrastructure)
+    participant RP as repositories<br/>(Infrastructure)
     participant PG as PostgreSQL
 
-    C->>EP: Bearer JWT + { memberId, bookCopyId }
-    Note over EP: 401 here if unauthenticated —<br/>default-deny fallback policy
+    C->>EP: { memberId, bookCopyId }
+    Note over EP: anonymous today — see AUTHORIZATION.md
     EP->>H: BorrowCopyCommand + CancellationToken
-    H->>RP: load copy, member, active-loan count
-    RP->>PG: SELECT ... AsNoTracking()
-    H->>AG: Loan.Open(copy, member, now, policy)
-    alt an invariant fails
-        AG-->>H: Result.Failure(DomainError)
-        H-->>EP: e.g. MemberSuspended
+    H->>RP: copy · member · active-loan count · copy already out?
+    RP->>PG: four reads, AsNoTracking()
+    H->>AG: Loan.Open(copy, member, count, copyHasActiveLoan, now)
+    alt member suspended, or at their loan limit
+        AG-->>H: Result.Failure(RuleViolation)
         EP-->>C: 422 ProblemDetails
-    else invariants hold
+    else copy already out, caught in advance
+        AG-->>H: Result.Failure(Conflict)
+        EP-->>C: 409 loan.copy.already_on_loan
+    else guards hold
         AG-->>H: Result.Success(loan)
         H->>RP: Add(loan) + SaveChangesAsync(ct)
         RP->>PG: INSERT
-        alt concurrent borrow won the race
-            PG-->>RP: 23505 unique_violation
-            RP-->>H: ConflictError
-            EP-->>C: 409 ProblemDetails
+        alt a concurrent borrow won the race
+            PG-->>RP: 23505 on ix_loans_active_copy
+            RP-->>H: Result.Failure(Conflict)
+            EP-->>C: 409 loan.copy.already_on_loan
         else
             PG-->>RP: OK
             EP-->>C: 201 Created + Location
@@ -252,11 +292,21 @@ sequenceDiagram
     end
 ```
 
-**Why both checks.** The aggregate check gives a clean, fast, well-worded rejection for the
-common case. The partial unique index is the one that cannot be raced — two requests can
-both pass the in-memory check microseconds apart, and exactly one INSERT survives. Catching
-`23505` and translating it to a 409 is what makes the rule actually true under concurrency.
-Enforcing it only in the aggregate is the mistake most submissions make.
+Note the two 409 branches carry the **identical** error code. That is the point: one was decided in
+memory and one by the database, and a client cannot tell which. Both come from the same factory
+method, so they cannot drift apart.
+
+**Why both checks.** The aggregate check gives a clean, fast, well-worded rejection for the common
+case. The partial unique index is the one that cannot be raced — two requests can both pass the
+in-memory check microseconds apart, and exactly one INSERT survives. Catching `23505`, matching on
+the constraint *name* so an unrelated collision is never misreported, and translating it back into
+the same domain error is what makes the rule actually true under concurrency. Enforcing it only in
+the aggregate is the mistake most submissions make.
+
+**Four reads before one write.** Named rather than hidden: the alternative is a single query
+returning all four facts, which would mean `Loan.Open` taking loose scalars instead of the
+aggregates whose rules it applies — moving the rules out of the objects that own them to save three
+round trips. At a library's request rate that trade is clear; at a different rate it would not be.
 
 ## 6. Cross-cutting concerns
 
@@ -298,24 +348,30 @@ an email address in a log field during a review and retrofitting the rule across
 
 Four files that exist today, in this order, tell most of the story:
 
-1. **`src/LibraryLoans.Domain/Books/Isbn.cs`** — why the value object canonicalises ISBN-10 into
+1. **`src/LibraryLoans.Domain/Loans/Loan.cs`** — every rule about whether a copy may leave the
+   building, in one file, with the reasoning for the guard order and for which races are accepted
+   and which are not.
+2. **`src/LibraryLoans.Infrastructure/Persistence/Configurations/LoanConfiguration.cs`** — the
+   partial unique index on `(book_copy_id) WHERE returned_at IS NULL`. The filter is not an
+   optimisation; it is the difference between "a copy may have one active loan" and "a copy may be
+   borrowed once, ever". A temporal invariant expressed as a static index.
+3. **`src/LibraryLoans.Infrastructure/Persistence/UnitOfWork.cs`** — the half of a uniqueness rule
+   most implementations leave out: translating the database's ruling back into the same domain
+   error the in-memory check produces, matched on constraint name so an unrelated collision is
+   never misreported.
+4. **`tests/LibraryLoans.IntegrationTests/Loans/LoansEndpointsTests.cs`** — two tests carry the
+   argument. `Allows_exactly_one_of_two_simultaneous_borrows_of_one_copy` proves the rule survives a
+   race, asserting the row count and not merely the status codes. `Borrows_the_same_copy_again_after_it_has_been_returned`
+   is the one that would fail if the index were plain rather than partial — every other test in the
+   suite passes either way, which is why it was written before the migration was scaffolded.
+5. **`src/LibraryLoans.Domain/Books/Isbn.cs`** — why the value object canonicalises ISBN-10 into
    ISBN-13 rather than merely validating it. Both encodings satisfy their own check digit, so a
    validating-only type would let the catalogue hold one book twice under a unique index that
    claims otherwise.
-2. **`src/LibraryLoans.Infrastructure/Persistence/UnitOfWork.cs`** — the half of a uniqueness
-   rule most implementations leave out: translating the database's ruling back into the same
-   domain error the in-memory check produces, matched on constraint name so an unrelated
-   collision is never misreported.
-3. **`src/LibraryLoans.Infrastructure/Persistence/Migrations/`** — the unique index that makes
-   the rule true under concurrency, rather than merely usually true.
-4. **`tests/LibraryLoans.UnitTests/Architecture/DependencyRuleTests.cs`** — the dependency rule
-   as an executable check over the transitive reference graph, not a diagram.
+6. **`tests/LibraryLoans.UnitTests/Architecture/DependencyRuleTests.cs`** — the dependency rule as
+   an executable check over the transitive reference graph, not a diagram.
 
 Then, if the reasoning about concurrency is of interest:
-`tests/LibraryLoans.IntegrationTests/Books/UniqueConstraintTranslationTests.cs`, whose comment
-explains why the parallel-request test *cannot* prove the translation path and what to test
-instead.
-
-When the loan aggregate is built, `Domain/Loans/Loan.cs` and the partial unique index on
-`(book_copy_id) WHERE returned_at IS NULL` become the first two files worth reading, because a
-temporal invariant expressed as a static index is the more interesting version of the same idea.
+`tests/LibraryLoans.IntegrationTests/Loans/LoanConstraintTranslationTests.cs` and its counterpart
+for books, whose comments explain why the parallel-request test *cannot* prove the translation path
+and what to test instead.
