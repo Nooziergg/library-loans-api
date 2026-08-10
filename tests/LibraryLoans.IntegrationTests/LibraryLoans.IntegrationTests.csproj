@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <!--
+    Testcontainers starts a disposable PostgreSQL for the test run and destroys it afterwards,
+    which is how this suite satisfies the brief's requirement that tests never touch the
+    development database: the connection string is generated at runtime, so there is nothing to
+    accidentally point at a real server.
+
+    Npgsql is referenced directly because the fixture opens a connection itself to truncate
+    tables between test classes. It would arrive transitively through Api -> Infrastructure, but
+    depending on a transitive path for a type used in source is the same implicit-resolution
+    problem that produced the EntityFrameworkCore.Relational conflict.
+
+    Versions live in Directory.Packages.props. None of this ships in the container image.
+  -->
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\LibraryLoans.Api\LibraryLoans.Api.csproj" />
+  </ItemGroup>
+
+</Project>

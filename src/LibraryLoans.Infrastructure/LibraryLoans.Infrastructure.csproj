@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\LibraryLoans.Application\LibraryLoans.Application.csproj" />
+    <ProjectReference Include="..\LibraryLoans.Domain\LibraryLoans.Domain.csproj" />
+  </ItemGroup>
+
+  <!--
+    EF Core lives here and only here. Versions come from Directory.Packages.props.
+
+    The Design package is a build-time tool for scaffolding migrations. PrivateAssets="all"
+    keeps it out of everything that references this project, so it never reaches the published
+    container.
+
+    Relational is referenced explicitly even though the provider would pull it in transitively.
+    Because Design is PrivateAssets="all", it raises Relational to its own version for this
+    project's compilation but does not pass that on to anything referencing this project.
+    Consumers would instead resolve the provider's lower floor and load an older Relational than
+    this assembly was built against — an MSB3277 assembly conflict, and a mismatched EF Core at
+    runtime. Naming it here keeps one Relational across the whole graph.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+</Project>

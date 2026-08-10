@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <!--
+    Domain and Application are the subjects of this suite. The Api reference exists so the
+    request-validation filter, the domain-error-to-status mapping and the exception handler can
+    be tested directly, in-process, with no server and no database — they are pure functions
+    over their inputs, and routing them through an integration test would be slower and prove
+    less.
+
+    The dependency rule constrains src/, not tests/: a test project is allowed to see
+    everything it verifies.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\LibraryLoans.Domain\LibraryLoans.Domain.csproj" />
+    <ProjectReference Include="..\..\src\LibraryLoans.Application\LibraryLoans.Application.csproj" />
+    <ProjectReference Include="..\..\src\LibraryLoans.Api\LibraryLoans.Api.csproj" />
+  </ItemGroup>
+
+</Project>

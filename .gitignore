@@ -1,0 +1,41 @@
+# Build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+publish/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Test results
+[Tt]est[Rr]esult*/
+coverage*.json
+coverage*.xml
+coverage*.info
+*.trx
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local environment overrides — never commit real secrets
+.env
+.env.local
+appsettings.Local.json
+*.pfx
+*.p12
+
+# Working notes and local tooling, deliberately not part of the deliverable.
+# The reviewer-facing material lives in README.md and docs/.
+.claude/
+CLAUDE.md
+docs/PLAN.md
+docs/WORKFLOW.md

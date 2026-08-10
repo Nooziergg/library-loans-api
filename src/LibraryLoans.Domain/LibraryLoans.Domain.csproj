@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Intentionally empty.
+
+    No PackageReference, no ProjectReference, no property overrides. The Domain layer knows
+    nothing about how it is stored, served or logged, and the shortest proof of that is a
+    project file with nothing in it. DependencyRuleTests enforces it so it stays that way.
+
+    Framework and language settings come from Directory.Build.props.
+  -->
+
+</Project>

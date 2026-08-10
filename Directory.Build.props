@@ -1,0 +1,27 @@
+<Project>
+
+  <!--
+    Shared build settings for every project in the solution. Declared once here rather than
+    repeated per project, so retargeting the framework is a one-line change instead of a
+    six-file change that can be done incompletely.
+
+    Warnings are errors: a warning that survives review becomes a warning nobody reads.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!--
+      TreatWarningsAsErrors only covers the C# compiler. Package and assembly-resolution
+      problems are reported by MSBuild, so without this an unresolvable version conflict
+      between two dependencies passes a build that claims to treat warnings as errors —
+      which is exactly the kind of quiet gap this project is meant not to have.
+    -->
+    <MSBuildTreatWarningsAsErrors>true</MSBuildTreatWarningsAsErrors>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+</Project>

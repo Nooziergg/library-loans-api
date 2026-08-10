@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    The API references Infrastructure for one reason only: to register its implementations in
+    the composition root. No other file in this project may use an Infrastructure type.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\LibraryLoans.Application\LibraryLoans.Application.csproj" />
+    <ProjectReference Include="..\LibraryLoans.Infrastructure\LibraryLoans.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <!--
+    The request-validation filter and the domain-error-to-status mapping are internal because
+    nothing outside this assembly should call them. They are also the two pieces of the web
+    layer with real branching logic, so they are worth testing directly rather than inferring
+    from a response body.
+  -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="LibraryLoans.UnitTests" />
+  </ItemGroup>
+
+</Project>

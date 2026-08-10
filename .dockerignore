@@ -1,0 +1,13 @@
+**/bin/
+**/obj/
+**/.vs/
+**/.idea/
+.git/
+.github/
+.vscode/
+docs/
+tests/
+*.md
+*.sln
+.env
+.env.local

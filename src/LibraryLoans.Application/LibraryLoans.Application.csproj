@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\LibraryLoans.Domain\LibraryLoans.Domain.csproj" />
+  </ItemGroup>
+
+  <!--
+    Two first-party abstraction packages, and nothing else.
+
+    Both are permissively licensed parts of the platform's own abstraction surface, and both
+    are shallow: ILogger<T> is an interface this layer consumes, not a logging implementation
+    it is coupled to, and the DI abstractions exist only so this assembly can express its own
+    composition in AddApplication() rather than making the API project enumerate every handler.
+
+    Domain, by contrast, stays at zero package references — enforced by DependencyRuleTests.
+    That is the line that actually matters.
+
+    Versions live in Directory.Packages.props.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+</Project>

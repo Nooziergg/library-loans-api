@@ -1,0 +1,49 @@
+# Brings up the whole system with one command: `docker compose up`.
+# Works unchanged under Podman (`podman compose up`) — no Docker-only syntax here.
+#
+# Every credential below is a DEVELOPMENT value, committed on purpose so the project runs
+# out of the box. Production guidance is in the README.
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: library-db
+    environment:
+      POSTGRES_DB: library
+      POSTGRES_USER: library
+      POSTGRES_PASSWORD: library_dev_password
+    ports:
+      # Exposed so `dotnet test` on the host can create its own throwaway test databases.
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U library -d library"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: library-api
+    depends_on:
+      db:
+        # Gate on the healthcheck, never on a sleep: the API must not race the database.
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: 8080
+      ConnectionStrings__Default: "Host=db;Port=5432;Database=library;Username=library;Password=library_dev_password"
+      # Applied on startup for reviewer convenience. See README for why production differs.
+      # SEED_ON_STARTUP arrives with the seeder in P5; a flag nothing reads is worse than no
+      # flag, because it reads as configuration that works.
+      MIGRATE_ON_STARTUP: "true"
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  pgdata:

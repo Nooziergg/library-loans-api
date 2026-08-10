@@ -1,0 +1,80 @@
+using LibraryLoans.Domain.Common;
+
+namespace LibraryLoans.Domain.Books;
+
+/// <summary>
+/// Every failure the Book aggregate can produce, defined once.
+///
+/// This exists so that the same rule always reports the same code no matter which layer
+/// detects it. The duplicate-ISBN rule is the case that proves the point: the application
+/// layer checks for it before inserting, and the database catches the request that lost the
+/// race a microsecond later. Those are two different code paths in two different projects, and
+/// a client must not be able to tell them apart. Sharing one factory method is what makes that
+/// true, rather than two string literals that agree until someone edits one of them.
+/// </summary>
+public static class BookErrors
+{
+    public static DomainError IsbnRequired() =>
+        DomainError.Validation("book.isbn.required", "An ISBN is required.");
+
+    public static DomainError IsbnMalformed(string input) =>
+        DomainError.Validation(
+            "book.isbn.malformed",
+            $"'{Echo(input)}' is not an ISBN. Expected 10 or 13 digits, optionally hyphenated.");
+
+    public static DomainError IsbnChecksumFailed(string input) =>
+        DomainError.Validation(
+            "book.isbn.checksum_failed",
+            $"'{Echo(input)}' has the right shape for an ISBN but fails its check digit, so it is not a real ISBN.");
+
+    /// <summary>
+    /// Quoting the offending value back is what makes a validation message useful, but the
+    /// value came from the caller and ends up in a response body and a log line. Truncating it
+    /// keeps a rejected 30 MB request body from being echoed or written to disk.
+    /// </summary>
+    private static string Echo(string input)
+    {
+        if (input.Length <= MaxEchoedInputLength)
+        {
+            return input;
+        }
+
+        // Cutting at a fixed index can split a surrogate pair, leaving a lone surrogate that
+        // serialises as a replacement character in the response body. Backing off one character
+        // keeps the truncated text well-formed.
+        var cut = char.IsHighSurrogate(input[MaxEchoedInputLength - 1])
+            ? MaxEchoedInputLength - 1
+            : MaxEchoedInputLength;
+
+        return string.Concat(input.AsSpan(0, cut), "…");
+    }
+
+    private const int MaxEchoedInputLength = 20;
+
+    public static DomainError DuplicateIsbn() =>
+        DomainError.Conflict("book.isbn.duplicate", "A book with this ISBN is already in the catalogue.");
+
+    public static DomainError TitleRequired() =>
+        DomainError.Validation("book.title.required", "A title is required.");
+
+    public static DomainError TitleTooLong() =>
+        DomainError.Validation(
+            "book.title.too_long",
+            $"A title may be at most {Book.TitleMaxLength} characters.");
+
+    public static DomainError AuthorRequired() =>
+        DomainError.Validation("book.author.required", "An author is required.");
+
+    public static DomainError AuthorTooLong() =>
+        DomainError.Validation(
+            "book.author.too_long",
+            $"An author may be at most {Book.AuthorMaxLength} characters.");
+
+    public static DomainError PublishedYearOutOfRange(int latestAllowed) =>
+        DomainError.Validation(
+            "book.published_year.out_of_range",
+            $"A published year must be between {Book.EarliestPublishedYear} and {latestAllowed}.");
+
+    public static DomainError NotFound(Guid id) =>
+        DomainError.NotFound("book.not_found", $"No book exists with id {id}.");
+}
