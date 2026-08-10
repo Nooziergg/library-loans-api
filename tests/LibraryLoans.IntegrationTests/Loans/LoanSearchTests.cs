@@ -118,10 +118,30 @@ public sealed class LoanSearchTests : IAsyncLifetime
         Assert.True(page.TotalCount >= 1);
     }
 
+    /// <summary>Both published sort fields have to translate, not just be accepted by the allowlist.</summary>
+    [Theory]
+    [InlineData("loanedAt")]
+    [InlineData("dueAt")]
+    public async Task Sorts_by_every_published_field(string sortBy)
+    {
+        await using var factory = new LibraryApiFactory(_postgres.ConnectionString, seed: true);
+        using var client = factory.CreateClient();
+
+        var ascending = await SearchAsync(client, $"?sortBy={sortBy}&pageSize=5");
+        var descending = await SearchAsync(client, $"?sortBy={sortBy}&descending=true&pageSize=5");
+
+        Assert.NotEmpty(ascending.Items);
+        Assert.Equal(ascending.TotalCount, descending.TotalCount);
+        Assert.NotEqual(ascending.Items[0].Id, descending.Items[0].Id);
+    }
+
     [Theory]
     [InlineData("?sortBy=nonsense")]
     [InlineData("?page=0")]
     [InlineData("?pageSize=101")]
+    // The upper page boundary: unbounded, (page - 1) * pageSize overflows int and PostgreSQL
+    // rejects the resulting negative OFFSET with an error nothing translates.
+    [InlineData("?page=999999999")]
     public async Task Rejects_a_malformed_query_with_400(string query)
     {
         await using var factory = new LibraryApiFactory(_postgres.ConnectionString);

@@ -23,7 +23,20 @@ public sealed record BookCopyListRequest
     public const int MaxPageSize = 100;
     public const int DefaultPageSize = 20;
 
-    [Range(1, int.MaxValue)]
+    /// <summary>
+    /// Highest page a caller may ask for.
+    ///
+    /// Bounded, and not merely for politeness: the offset is computed as
+    /// <c>(Page - 1) * PageSize</c> in <c>int</c> arithmetic, which is unchecked. An unbounded page
+    /// number multiplies past <c>int.MaxValue</c>, wraps negative, and PostgreSQL rejects the
+    /// resulting negative OFFSET with an error nothing here translates — a 500 for a value the API
+    /// itself declared valid. With this cap the largest product is ten million, and an absurd page
+    /// gets the same 400 as every other malformed one.
+    /// </summary>
+    public const int MaxPage = 100_000;
+
+
+    [Range(1, MaxPage)]
     public int? Page { get; init; }
 
     [Range(1, MaxPageSize)]

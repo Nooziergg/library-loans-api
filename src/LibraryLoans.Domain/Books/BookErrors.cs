@@ -97,6 +97,16 @@ public static class BookErrors
             "book.has_loan_history",
             "This book has lending history and cannot be deleted, because doing so would erase it.");
 
+    /// <summary>
+    /// Deletion lost a race with something adding a copy of the same title. Retryable, and rare
+    /// enough that the honest message says what happened rather than pretending to be one of the
+    /// other two.
+    /// </summary>
+    public static DomainError CopiesChangedDuringDelete() =>
+        DomainError.Conflict(
+            "book.copies_changed",
+            "The copies of this book changed while it was being deleted. Try again.");
+
     public static DomainError NotFound(Guid id) =>
         DomainError.NotFound("book.not_found", $"No book exists with id {id}.");
 }

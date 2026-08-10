@@ -40,7 +40,12 @@ public static class DatabaseSeeder
     private const int AtLoanLimitMemberIndex = 0;
     private const int SuspendedMemberIndex = 1;
     private const int OverdueMemberIndex = 2;
-    private const int FullyBorrowedBookIndex = 0;
+    /// <summary>
+    /// Index 3 rather than 0, because copies-per-title is <c>index % 4 + 1</c> — so this title has
+    /// four copies and "every copy is out" is a demonstration rather than a technicality about a
+    /// title that only ever had one.
+    /// </summary>
+    private const int FullyBorrowedBookIndex = 3;
 
     public static async Task SeedAsync(this IServiceProvider services, CancellationToken cancellationToken)
     {
@@ -90,7 +95,23 @@ public static class DatabaseSeeder
             var (title, author, publishedYear) = SeedCatalogue.Books[index];
 
             var isbn = Isbn.Create(SeedCatalogue.IsbnFor(index));
+            if (!isbn.IsSuccess)
+            {
+                throw new InvalidOperationException(
+                    $"Seed ISBN {index} was rejected: {isbn.Error.Code}. Check IsbnFor's check digit.");
+            }
+
             var book = Book.Create(isbn.Value, title, author, publishedYear, now);
+
+            // Checked rather than assumed. Reading .Value on a failure throws a message with no
+            // index in it — "book.title.too_long" and nothing about which of sixty titles. The seed
+            // data is static, so this is unreachable unless someone edits it badly, which is exactly
+            // when a message naming the row is worth having.
+            if (!book.IsSuccess)
+            {
+                throw new InvalidOperationException(
+                    $"Seed book {index} ('{title}') was rejected by the domain: {book.Error.Code}.");
+            }
 
             books.Add(book.Value);
         }
@@ -114,6 +135,12 @@ public static class DatabaseSeeder
             for (var copyNumber = 0; copyNumber <= index % 4; copyNumber++)
             {
                 var barcode = Barcode.Create(SeedCatalogue.BarcodeFor(barcodeNumber++));
+                if (!barcode.IsSuccess)
+                {
+                    throw new InvalidOperationException(
+                        $"Seed barcode {barcodeNumber - 1} was rejected: {barcode.Error.Code}.");
+                }
+
                 forThisBook.Add(BookCopy.Add(books[index], barcode.Value));
             }
 
@@ -132,7 +159,18 @@ public static class DatabaseSeeder
             var (name, email) = SeedCatalogue.Members[index];
 
             var membershipNumber = MembershipNumber.Create(SeedCatalogue.MembershipNumberFor(index));
+            if (!membershipNumber.IsSuccess)
+            {
+                throw new InvalidOperationException(
+                    $"Seed membership number {index} was rejected: {membershipNumber.Error.Code}.");
+            }
+
             var member = Member.Register(membershipNumber.Value, name, email);
+            if (!member.IsSuccess)
+            {
+                throw new InvalidOperationException(
+                    $"Seed member {index} ('{name}') was rejected by the domain: {member.Error.Code}.");
+            }
 
             members.Add(member.Value);
         }
@@ -222,11 +260,10 @@ public static class DatabaseSeeder
         var returnedCandidates = allCopies.Where(copy => !copyIsOut.Contains(copy.Id)).Take(30).ToList();
         for (var index = 0; index < returnedCandidates.Count; index++)
         {
+            // Spread across the borrowers whose state is not deliberately arranged, so the
+            // at-limit, suspended and overdue members stay the only demonstrations of their rules.
+            // A returned loan does not count against anyone's limit, so no bookkeeping is needed.
             var memberIndex = 3 + (index % (members.Count - 3));
-            if (memberIndex == SuspendedMemberIndex)
-            {
-                continue;
-            }
 
             Open(returnedCandidates[index], memberIndex, now.AddDays(-60 + index), returnIt: true);
         }

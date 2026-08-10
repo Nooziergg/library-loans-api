@@ -35,6 +35,8 @@ public sealed record RegisterMemberRequest
 
 internal static class MembersEndpoints
 {
+    private const string GetMemberByIdRouteName = "GetMemberById";
+
     public static RouteGroupBuilder MapMembers(this RouteGroupBuilder api)
     {
         var members = api.MapGroup("/members").WithTags("Members");
@@ -45,7 +47,7 @@ internal static class MembersEndpoints
             .WithSummary("Lists borrowers, optionally filtered by status.");
 
         members.MapGet("/{id:guid}", GetByIdAsync)
-            .WithName("GetMemberById")
+            .WithName(GetMemberByIdRouteName)
             .WithSummary("Fetches a single borrower.");
 
         members.MapPost("/{id:guid}/suspend", SuspendAsync)
@@ -101,18 +103,15 @@ internal static class MembersEndpoints
             : DomainErrorToHttp.ToProblem(result.Error);
     }
 
-    private static async Task<Results<Created<MemberResponse>, ProblemHttpResult>> RegisterAsync(
+    private static async Task<Results<CreatedAtRoute<MemberResponse>, ProblemHttpResult>> RegisterAsync(
         RegisterMemberRequest request,
         RegisterMemberHandler handler,
         CancellationToken cancellationToken)
     {
         var result = await handler.HandleAsync(request.ToCommand(), cancellationToken);
 
-        // 201 with the created resource and deliberately no Location header: there is no
-        // GET /members/{id} yet, and RFC 9110 permits omitting Location — a header pointing at a
-        // route that answers 404 would be worse than none at all.
         return result.IsSuccess
-            ? TypedResults.Created((string?)null, result.Value)
+            ? TypedResults.CreatedAtRoute(result.Value, GetMemberByIdRouteName, new { id = result.Value.Id })
             : DomainErrorToHttp.ToProblem(result.Error);
     }
 }

@@ -9,8 +9,7 @@
 > the one that shapes the design, that a copy cannot be on two active loans at once.
 >
 > What does not: the parts of the copy and member lifecycles that no current rule needs (retiring a
-> copy, renewing a loan, reinstating a suspended member), the read and write breadth beyond what is
-> listed in the README, seed data, and authentication.
+> copy, renewing a loan, reinstating a suspended member), and authentication.
 >
 > Sections are marked **BUILT**, **PARTIAL** or **DESIGNED, NOT BUILT** so nothing here has to be
 > taken on trust. Where something is unbuilt, the diagram is a specification of intent, not a claim
@@ -18,7 +17,7 @@
 >
 > | Section | State |
 > |---|---|
-> | 1. Deployment view | **BUILT** — `docker compose up` yields a migrated, working API |
+> | 1. Deployment view | **BUILT** — `docker compose up` yields a migrated, seeded, working API |
 > | 2. Layers and the dependency rule | **BUILT** — and enforced by a test |
 > | 3. Domain model | **BUILT**, except two columns marked inline as designed-not-in-schema |
 > | 4. State machines | **PARTIAL** — Loan and Member built; BookCopy has no lifecycle state yet |
@@ -51,9 +50,14 @@ There is no manual database-creation step: compose creates the role and database
 `POSTGRES_*` environment, the API waits on the `db` healthcheck rather than on a sleep, and then
 applies migrations itself.
 
-**The database comes up empty.** There is no seeder yet, so a reviewer following the README's quick
-start creates the first rows themselves. Seeding is planned and will be gated behind a
-`SEED_ON_STARTUP` flag, which is deliberately absent from `compose.yaml` until something reads it.
+**The database comes up populated.** After migrating, the API seeds a working library — 60 titles,
+150 physical copies, 40 borrowers and 80 loans — so the first request a reviewer makes has something
+to return. Gated behind `SEED_ON_STARTUP`, which compose sets, and idempotent by checking for
+existing data, so restarting never duplicates anything.
+
+Unlike migration, a failed seed is logged and tolerated rather than fatal: the API cannot serve
+requests against a schema that is not there, but it works perfectly well without sample data, so a
+failure should cost some rows and a loud error rather than a container that restarts forever.
 
 Migrating on startup is a convenience decision, not a recommendation. In production, migrations
 run as a separate deployment step — with several replicas, every instance would otherwise race to
@@ -322,7 +326,7 @@ round trips. At a library's request rate that trade is clear; at a different rat
 | Error shaping | `IExceptionHandler` + `AddProblemDetails()` → RFC 7807, with `DomainError.Code` surfaced as the `code` extension. Exception messages never reach a client. | **BUILT** |
 | Client disconnects | an aborted request is logged at Information and answered with no body, so error-rate alerting does not track how often users close tabs | **BUILT** |
 | Validation | value objects reject invalid state at construction; `Result<T>` carries failures outward; DataAnnotations on request DTOs for shape only | **BUILT** |
-| Time | `TimeProvider` injected everywhere — no `DateTime.UtcNow` anywhere in the solution, including tests | **BUILT** |
+| Time | `TimeProvider` injected everywhere in production code — no `DateTime.UtcNow` in `src/`. Two integration tests read the real clock, which is unavoidable when asserting that a seeded loan is overdue *now* | **BUILT** |
 | Resilience | `EnableRetryOnFailure` on the Npgsql connection | **BUILT** |
 | Health | `/health/live` — process liveness, touching no dependency | **BUILT** |
 | Health | `/health/ready` — readiness with a database probe | not built |

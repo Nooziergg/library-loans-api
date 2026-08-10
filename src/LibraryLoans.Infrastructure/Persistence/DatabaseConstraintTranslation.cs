@@ -57,6 +57,12 @@ internal static class DatabaseConstraintTranslation
     public static DomainError? TranslateForeignKeyViolation(string? constraintName) => constraintName switch
     {
         DatabaseConstraints.LoansBookCopyForeignKey => BookErrors.CopyOnLoan(),
+
+        // Reachable the same way: a copy added between the delete handler reading the title's copies
+        // and writing, so the book delete finds a copy it never loaded. Also retryable — the caller
+        // is deleting a title someone else is still stocking — and unmapped it would be a 500.
+        DatabaseConstraints.BookCopiesBookForeignKey => BookErrors.CopiesChangedDuringDelete(),
+
         _ => null,
     };
 }

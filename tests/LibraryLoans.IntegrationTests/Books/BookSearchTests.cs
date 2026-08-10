@@ -178,6 +178,29 @@ public sealed class BookSearchTests : IAsyncLifetime
         Assert.False(last.HasNextPage);
     }
 
+    /// <summary>
+    /// Every value the allowlist publishes has to actually translate. <c>isbn</c> is the one worth
+    /// singling out: it orders by a property behind a value converter, which is the combination most
+    /// likely to behave differently from the plain columns the other cases cover. It is published in
+    /// the OpenAPI document, so a reviewer can type it.
+    /// </summary>
+    [Theory]
+    [InlineData("title")]
+    [InlineData("author")]
+    [InlineData("publishedYear")]
+    [InlineData("isbn")]
+    public async Task Sorts_by_every_published_field(string sortBy)
+    {
+        await CreateBookAsync("9780451524935", "Nineteen Eighty-Four", "George Orwell", 1949);
+        await CreateBookAsync("9780306406157", "The Hobbit", "J. R. R. Tolkien", 1937);
+
+        var ascending = await SearchAsync($"?sortBy={sortBy}");
+        var descending = await SearchAsync($"?sortBy={sortBy}&descending=true");
+
+        Assert.Equal(2, ascending.TotalCount);
+        Assert.Equal(ascending.Items[0].Id, descending.Items[1].Id);
+    }
+
     [Fact]
     public async Task Sorts_in_both_directions()
     {
@@ -232,6 +255,11 @@ public sealed class BookSearchTests : IAsyncLifetime
     [InlineData("?pageSize=0")]
     [InlineData("?pageSize=101")]
     [InlineData("?pageSize=100000")]
+    // The upper boundary. Unbounded, (page - 1) * pageSize overflows int, wraps negative, and
+    // PostgreSQL rejects the negative OFFSET with an error nothing translates — a 500 for a
+    // value the API itself declared valid.
+    [InlineData("?page=999999999")]
+    [InlineData("?page=2147483647")]
     public async Task Rejects_a_malformed_query_with_400(string query)
     {
         var response = await _client.GetAsync($"/api/v1/books{query}");

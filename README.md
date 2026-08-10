@@ -312,6 +312,14 @@ claim the schema does not support. Note that `CREATE EXTENSION pg_trgm` needs a 
 it; managed PostgreSQL grants that to its admin role but a locked-down application role would not,
 which is one more argument for applying migrations as a deployment step rather than on boot.
 
+**Which loan filters are index-backed, and which are not.** `ix_loans_member_active` is *partial*,
+covering only loans still out — so `GET /loans?memberId=…&active=true` and `?overdue=true` are index
+seeks, while the same filter over a borrower's full history is a scan. That is the right trade for a
+library: the question asked constantly is "what does this person have out", and the one asked rarely
+is "what have they ever borrowed". There is deliberately **no index on `members.status`** either:
+with two distinct values PostgreSQL will scan regardless, and an index it never chooses is a
+maintenance cost pretending to be an optimisation.
+
 **Sorting is an allowlist and paging is bounded, both at the boundary.** An unpublished sort field
 or a page size of 10,000 is a malformed request, answered with 400 by the same DataAnnotations
 filter every request DTO goes through — not silently clamped, which would be a third behaviour for

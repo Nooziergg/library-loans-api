@@ -5,7 +5,7 @@ namespace LibraryLoans.Infrastructure.Persistence;
 ///
 /// These are named explicitly rather than left to EF Core's naming convention because the names are
 /// load-bearing: when PostgreSQL rejects a write, the constraint name is the only thing in the error
-/// that says <i>which rule</i> was broken, and <see cref="UniqueConstraintTranslation"/> matches on
+/// that says <i>which rule</i> was broken, and <see cref="DatabaseConstraintTranslation"/> matches on
 /// it to produce the right response. A convention-generated name would work until a rename silently
 /// turned a 409 into a 500.
 ///
@@ -16,7 +16,7 @@ namespace LibraryLoans.Infrastructure.Persistence;
 internal static class DatabaseConstraints
 {
     // ── Unique constraints whose violation is translated into a domain error ──────────────────
-    // Every name here must have an arm in UniqueConstraintTranslation. An unmapped one is a 500
+    // Every name here must have an arm in DatabaseConstraintTranslation. An unmapped one is a 500
     // where a 409 belongs.
 
     /// <summary>
@@ -73,7 +73,7 @@ internal static class DatabaseConstraints
 
     /// <summary>
     /// Deliberately <b>not</b> translated. It raises SQLSTATE 23514, not 23505, so
-    /// <see cref="UniqueConstraintTranslation"/> never sees it and the unit of work lets it through
+    /// <see cref="DatabaseConstraintTranslation"/> never sees it and the unit of work lets it through
     /// as a fault. That is correct: the domain computes the due date from the loan date, so this
     /// constraint is unreachable through any code path. If it ever fires, something wrote to the
     /// database directly and a 500 with a logged stack trace is exactly the right alarm.

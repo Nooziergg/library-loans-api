@@ -8,7 +8,8 @@
 
 That is the whole requirement. No .NET SDK, no PostgreSQL installation, no cloud account, no
 configuration to edit. `docker compose up` builds the API, starts PostgreSQL, waits for it to be
-healthy, applies migrations and serves on port 8080.
+healthy, applies migrations, seeds a working library of 330 rows, and serves on port 8080 — so the
+first request you make has something to return.
 
 Podman works — the compose file avoids Docker-only syntax. Run `podman machine start` first.
 

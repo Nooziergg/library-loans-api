@@ -20,7 +20,7 @@ namespace LibraryLoans.IntegrationTests.Loans;
 /// to serialise, the handler's own pre-check rejects the second one and the database is never
 /// consulted — so the translation path never runs and the test passes anyway. Should a constraint
 /// name in <c>DatabaseConstraints</c> ever drift from the name in the migration,
-/// <c>UniqueConstraintTranslation</c> would return null, the unit of work would rethrow, clients
+/// <c>DatabaseConstraintTranslation</c> would return null, the unit of work would rethrow, clients
 /// would start receiving 500s in place of 409s, and the rest of the suite would stay green.
 ///
 /// Driving the repositories and unit of work directly removes the race and turns each constraint
