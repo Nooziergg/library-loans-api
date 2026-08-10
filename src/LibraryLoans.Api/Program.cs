@@ -6,6 +6,7 @@ using LibraryLoans.Api.Members;
 using LibraryLoans.Application;
 using LibraryLoans.Infrastructure;
 using LibraryLoans.Infrastructure.Persistence;
+using LibraryLoans.Infrastructure.Persistence.Seeding;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -106,6 +107,32 @@ if (app.Configuration.GetValue<bool>("MIGRATE_ON_STARTUP"))
     // stop the migration, and "accepts a CancellationToken, then every caller passes default"
     // is on this project's list of things not to repeat.
     await app.Services.ApplyMigrationsAsync(app.Lifetime.ApplicationStopping);
+}
+
+// Fills an empty database so the API is worth exploring the moment it starts. Idempotent — it
+// checks for existing data first — so restarting never duplicates anything.
+//
+// One assumption worth stating: this is safe because compose runs a single replica. Two instances
+// booting together would both find an empty database and both seed, and one would lose on a unique
+// index and crash-loop. A production deployment would seed as a separate job for the same reason it
+// migrates as one.
+if (app.Configuration.GetValue<bool>("SEED_ON_STARTUP"))
+{
+    try
+    {
+        await app.Services.SeedAsync(app.Lifetime.ApplicationStopping);
+    }
+    catch (Exception exception)
+    {
+        // Logged loudly and then tolerated, unlike a failed migration, which is fatal because the
+        // API cannot serve a request against a schema that is not there. Sample data is a
+        // convenience: the service works without it, so a failure here should cost a reviewer some
+        // rows and an obvious error in the log — not a container that restarts forever and takes
+        // every endpoint down with it.
+        app.Services.GetRequiredService<ILoggerFactory>()
+            .CreateLogger("LibraryLoans.Seeding")
+            .LogError(exception, "Seeding failed. The API will start with whatever data is present");
+    }
 }
 
 // app.UseAuthentication();

@@ -49,6 +49,9 @@ services:
       # appear here — a flag nothing consumes is worse than no flag, because it reads as
       # configuration that works.
       MIGRATE_ON_STARTUP: "true"
+      # Fills an empty database with a working library so there is something to explore
+      # immediately. Idempotent, so restarting does not duplicate it.
+      SEED_ON_STARTUP: "true"
     ports:
       - "8080:8080"
     restart: unless-stopped

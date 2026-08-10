@@ -26,7 +26,9 @@ working API:
 - RFC 7807 for every failure; exception messages never reach a client
 - EF Core on PostgreSQL, migrations committed and applied on startup
 - An OpenAPI document at `/openapi/v1.json`
-- 143 unit tests and 30 integration tests, the latter against a disposable PostgreSQL that
+- **Seed data — 330 rows out of the box**: 60 real titles, 150 physical copies, 40 borrowers and
+  80 loans, arranged so the rules are visible rather than described
+- 143 unit tests and 59 integration tests, the latter against a disposable PostgreSQL that
   Testcontainers creates and destroys per run
 
 ### The rules, and where each is enforced
@@ -49,7 +51,6 @@ working API:
   transition whose guarding rule is deferred with it, on the principle that a guard whose
   precondition cannot be reached is a guard that cannot be tested
 - Update and delete on books; collection reads for members, copies and loans
-- Seed data — the database starts empty
 - **Authentication and authorization — deliberately.** Every endpoint is anonymous. The brief
   does not ask for auth, and the budget went to the domain invariants it does ask for. The
   decision, the intended design (an external OIDC provider, default-deny, and why role rules and
@@ -116,10 +117,38 @@ curl -i -X POST http://localhost:8080/api/v1/books -H 'Content-Type: application
   -d '{"isbn":"9780306406157","publishedYear":1990}'
 ```
 
+### The seeded library
+
+`docker compose up` leaves you with a working library rather than an empty schema — 60 titles, 150
+copies, 40 borrowers and 80 loans. It is deliberately arranged so the rules are observable without
+editing anything:
+
+```bash
+curl -s "localhost:8080/api/v1/books?search=orwell"                    # three titles
+curl -s "localhost:8080/api/v1/books?pageSize=1" | grep totalCount      # 60 titles
+curl -s "localhost:8080/api/v1/books?availableOnly=true&pageSize=1"     # 40 — the rest are all out
+
+# a title whose every copy is on loan: found by search, absent from the available list
+curl -s "localhost:8080/api/v1/books?search=Nineteen"
+curl -s "localhost:8080/api/v1/books?search=Nineteen&availableOnly=true"
+```
+
+The seed also contains a suspended member, a borrower holding the maximum five loans, an overdue
+loan, and thirty loans already returned — so each rule can be watched refusing something rather than
+read about.
+
+Two notes on how it is built, because both are deliberate. **Every row goes through the domain
+factories** — `Book.Create`, `Member.Register`, `Loan.Open` — so the seeded data provably satisfies
+every invariant, and the seeder is the only caller of the domain that is not an HTTP request, which
+is what would catch an aggregate that only works when driven from an endpoint. And **the titles and
+authors are real while the ISBNs are not**: they carry correct check digits so the domain accepts
+them, but attaching a genuine ISBN to a row invented for a demonstration would put a real identifier
+on the wrong record.
+
 ### Watching the loan rule work
 
 The sequence worth running, because the last two steps are the whole argument. Substitute the ids
-returned by each call:
+returned by each call — or use the seeded data above:
 
 ```bash
 # a title, a physical copy of it, and a borrower

@@ -14,7 +14,18 @@ namespace LibraryLoans.IntegrationTests.Infrastructure;
 /// suite that passes against wiring the deployed application never uses, which is the failure
 /// mode where integration tests quietly stop testing anything.
 /// </summary>
-public sealed class LibraryApiFactory(string connectionString) : WebApplicationFactory<Program>
+/// <param name="seed">
+/// Whether to run the data seeder on startup. **Off by default, deliberately.**
+///
+/// Most test classes arrange exactly the rows they assert on, and seeding underneath them would
+/// break them in a way that points at the wrong place: the seeded catalogue contains sixty titles
+/// with their own ISBNs, barcodes and membership numbers, and a test posting its own fixture data
+/// would collide on a unique index. The seeder keeps its natural keys clear of the ranges the tests
+/// use — <c>9781…</c> ISBNs, <c>LIB-</c> barcodes, <c>M9…</c> members — but the cleanest guarantee
+/// is that classes which do not need the seed never see it.
+/// </param>
+public sealed class LibraryApiFactory(string connectionString, bool seed = false)
+    : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -26,5 +37,7 @@ public sealed class LibraryApiFactory(string connectionString) : WebApplicationF
         // the same code path the container uses. A separate migration call in the fixture could
         // succeed while the startup path was broken.
         builder.UseSetting("MIGRATE_ON_STARTUP", "true");
+
+        builder.UseSetting("SEED_ON_STARTUP", seed ? "true" : "false");
     }
 }
