@@ -1,5 +1,6 @@
 using LibraryLoans.Api.Http;
 using LibraryLoans.Application.Books;
+using LibraryLoans.Application.Common;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace LibraryLoans.Api.Books;
@@ -37,6 +38,14 @@ internal static class BooksEndpoints
             .WithName("CreateBook")
             .WithSummary("Adds a title to the catalogue.");
 
+        books.MapGet("/", SearchAsync)
+            // Shape is validated by the filter before this runs — the sort field against a
+            // published allowlist, the page bounds against a range. A sort name that is not on the
+            // list is a malformed request, so it is a 400 rather than a domain refusal.
+            .AddEndpointFilter<ValidationFilter<BookSearchRequest>>()
+            .WithName("SearchBooks")
+            .WithSummary("Searches the catalogue by title, author or ISBN.");
+
         books.MapGet("/{id:guid}", GetByIdAsync)
             // Reading the catalogue needs only an authenticated caller, which the group-level
             // default-deny policy already provides — so no explicit policy here. Worth stating
@@ -60,6 +69,18 @@ internal static class BooksEndpoints
                 result.Value,
                 GetBookByIdRouteName,
                 new { id = result.Value.Id })
+            : DomainErrorToHttp.ToProblem(result.Error);
+    }
+
+    private static async Task<Results<Ok<PagedResponse<BookResponse>>, ProblemHttpResult>> SearchAsync(
+        [AsParameters] BookSearchRequest request,
+        SearchBooksHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(request.ToQuery(), cancellationToken);
+
+        return result.IsSuccess
+            ? TypedResults.Ok(result.Value)
             : DomainErrorToHttp.ToProblem(result.Error);
     }
 

@@ -56,6 +56,19 @@ internal static class DatabaseConstraints
     /// </summary>
     public const string BookCopiesBookIndex = "ix_book_copies_book_id";
 
+    /// <summary>
+    /// Trigram indexes backing catalogue search.
+    ///
+    /// A substring match compiles to <c>ILIKE '%term%'</c>, and a leading wildcard cannot use a
+    /// B-tree — so without these, "search" would be a sequential scan and calling it scalable would
+    /// be a claim the schema does not support. GIN with <c>gin_trgm_ops</c> is the index that makes
+    /// the shape correct; at this catalogue's size PostgreSQL will still choose a scan, and the
+    /// README says so rather than implying otherwise.
+    /// </summary>
+    public const string BooksTitleTrigramIndex = "ix_books_title_trgm";
+
+    public const string BooksAuthorTrigramIndex = "ix_books_author_trgm";
+
     // ── Check constraints ────────────────────────────────────────────────────────────────────
 
     /// <summary>

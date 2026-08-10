@@ -1,4 +1,5 @@
 using LibraryLoans.Application.Books;
+using LibraryLoans.Application.Common;
 
 namespace LibraryLoans.UnitTests.Books;
 
@@ -37,5 +38,15 @@ public sealed class GetBookByIdHandlerTests
     {
         public Task<BookResponse?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
             Task.FromResult(response);
+
+        /// <summary>
+        /// Not exercised here. Searching is a query built in SQL, so its behaviour is only
+        /// meaningful against a real database — it is covered by the integration suite rather than
+        /// by a stub that would only prove this stub works.
+        /// </summary>
+        public Task<PagedResponse<BookResponse>> SearchAsync(
+            BookSearchQuery query,
+            CancellationToken cancellationToken) =>
+            throw new NotSupportedException("Search is covered by the integration tests.");
     }
 }

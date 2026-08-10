@@ -65,5 +65,19 @@ internal sealed class BookConfiguration : IEntityTypeConfiguration<Book>
         builder.Property(book => book.PublishedYear)
             .HasColumnName("published_year")
             .IsRequired();
+
+        // Declared through the model rather than as raw SQL in a migration, so both the extension
+        // and these indexes live in the model snapshot and a later scaffold cannot silently drop
+        // them. See DatabaseConstraints for why a trigram index is the right tool here — and for
+        // the honest note that at this data volume PostgreSQL will scan anyway.
+        builder.HasIndex(book => book.Title)
+            .HasMethod("gin")
+            .HasOperators("gin_trgm_ops")
+            .HasDatabaseName(DatabaseConstraints.BooksTitleTrigramIndex);
+
+        builder.HasIndex(book => book.Author)
+            .HasMethod("gin")
+            .HasOperators("gin_trgm_ops")
+            .HasDatabaseName(DatabaseConstraints.BooksAuthorTrigramIndex);
     }
 }

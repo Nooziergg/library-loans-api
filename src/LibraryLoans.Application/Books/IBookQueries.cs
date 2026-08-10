@@ -1,3 +1,5 @@
+using LibraryLoans.Application.Common;
+
 namespace LibraryLoans.Application.Books;
 
 /// <summary>
@@ -12,4 +14,14 @@ namespace LibraryLoans.Application.Books;
 public interface IBookQueries
 {
     Task<BookResponse?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Searches the catalogue.
+    ///
+    /// Returns a materialised page rather than an <c>IQueryable</c>, and that matters more here than
+    /// on the single-item read: handing a queryable across this boundary would let a caller compose
+    /// paging and ordering of its own, which is exactly where an unbounded result set or an
+    /// unvalidated sort gets in.
+    /// </summary>
+    Task<PagedResponse<BookResponse>> SearchAsync(BookSearchQuery query, CancellationToken cancellationToken);
 }

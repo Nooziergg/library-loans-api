@@ -18,6 +18,9 @@ working API:
 - Books, copies, members and loans: `POST /api/v1/books`, `GET /api/v1/books/{id}`,
   `POST /api/v1/books/{bookId}/copies`, `POST /api/v1/members`, `POST /api/v1/loans`,
   `POST /api/v1/loans/{id}/return`, `GET /api/v1/loans/{id}`
+- **Catalogue search and filtering** — `GET /api/v1/books` with `search` over title, author and
+  ISBN, an `availableOnly` filter, paging with a capped page size, and sorting restricted to a
+  published allowlist
 - The `Isbn` value object, checksum-validated and canonicalised so one book has one
   representation
 - RFC 7807 for every failure; exception messages never reach a client
@@ -45,7 +48,7 @@ working API:
 - Renewing a loan, retiring a copy, and reinstating a suspended member — each is a state
   transition whose guarding rule is deferred with it, on the principle that a guard whose
   precondition cannot be reached is a guard that cannot be tested
-- Update and delete on books; list, filter, search and pagination
+- Update and delete on books; collection reads for members, copies and loans
 - Seed data — the database starts empty
 - **Authentication and authorization — deliberately.** Every endpoint is anonymous. The brief
   does not ask for auth, and the budget went to the domain invariants it does ask for. The
@@ -260,6 +263,27 @@ derived state that a stored column could contradict — and the query that repla
 `NOT EXISTS (SELECT 1 FROM loans WHERE book_copy_id = c.id AND returned_at IS NULL)`, is served by
 this same index. **The index that makes the invariant true is the index that makes the availability
 query fast.**
+
+**Searching by ISBN works with the number printed on the book.** Stored ISBNs are canonical
+13-digit strings, so a search for `978-0-306-40615-7` — or for `0306406152`, the ISBN-10 of the same
+title — would match nothing if the term were compared as text. The term goes through the same value
+object the catalogue is built on: if it parses as an ISBN in any spelling it becomes the one stored
+form and is matched exactly, using the unique index rather than a scan. This is the value object
+earning its keep a second time.
+
+**The search index is honest about what it does.** Substring matching compiles to `ILIKE '%term%'`,
+and a leading wildcard cannot use a B-tree, so title and author carry GIN trigram indexes. At this
+catalogue's size PostgreSQL will still choose a sequential scan and `EXPLAIN` will say so — the
+index makes the *shape* correct at a million rows, and claiming it makes sixty rows fast would be a
+claim the schema does not support. Note that `CREATE EXTENSION pg_trgm` needs a role with rights to
+it; managed PostgreSQL grants that to its admin role but a locked-down application role would not,
+which is one more argument for applying migrations as a deployment step rather than on boot.
+
+**Sorting is an allowlist and paging is bounded, both at the boundary.** An unpublished sort field
+or a page size of 10,000 is a malformed request, answered with 400 by the same DataAnnotations
+filter every request DTO goes through — not silently clamped, which would be a third behaviour for
+invalid input with no stated rule covering it. Every ordering ends on the primary key, because ties
+in a sort column otherwise leave rows able to appear on two pages or on none.
 
 **One race is accepted, deliberately.** Two concurrent borrows can both read a member's active-loan
 count as four and both proceed, leaving them holding six. There is no constraint behind that limit,

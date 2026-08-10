@@ -20,6 +20,7 @@ public static class ApplicationServiceCollectionExtensions
     {
         services.AddScoped<CreateBookHandler>();
         services.AddScoped<GetBookByIdHandler>();
+        services.AddScoped<SearchBooksHandler>();
         services.AddScoped<RegisterMemberHandler>();
         services.AddScoped<AddBookCopyHandler>();
         services.AddScoped<BorrowCopyHandler>();
