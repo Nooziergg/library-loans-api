@@ -1,78 +1,73 @@
-# Prerequisites — install these manually
+# Prerequisites
 
-Two tiers. **Tier 1 is what a reviewer needs** (and is the only thing the README will
-require). Tier 2 is what *we* need to develop it.
+## To run it: Docker, and nothing else
 
-## Tier 1 — required to run the submission
+| Tool | Version |
+|---|---|
+| **Docker Desktop**, or **Podman** | Docker 24+ / Podman 5+ |
 
-| # | Tool | Version | Notes |
-|---|---|---|---|
-| 1 | **Docker Desktop** *or* **Podman + podman-compose** | Docker 24+ / Podman 5+ | The whole system comes up with one command. Podman works — the compose file avoids Docker-only syntax. On Podman: `podman machine start` first. |
-| 2 | **Git** | 2.40+ | Already present. |
+That is the whole requirement. No .NET SDK, no PostgreSQL installation, no cloud account, no
+configuration to edit. `docker compose up` builds the API, starts PostgreSQL, waits for it to be
+healthy, applies migrations and serves on port 8080.
 
-That is the entire reviewer-facing requirement. No .NET SDK, no Postgres install, no
-Azure account. This is deliberate and gets stated in the README.
+Podman works — the compose file avoids Docker-only syntax. Run `podman machine start` first.
 
-## Tier 2 — required to develop
+The database is published on host port **55432**, deliberately not the default 5432, so it cannot
+collide with a PostgreSQL you already have running. Connect a tool to it there, or use psql inside
+the container:
 
-| # | Tool | Version | Install |
-|---|---|---|---|
-| 3 | **.NET SDK 10** | 10.0.302 ✅ installed | Pinned by `global.json`. .NET 9 is STS and left support on 12 May 2026; .NET 10 is LTS to Nov 2028. |
-| 4 | **dotnet-ef CLI** | 10.x | `dotnet tool install --global dotnet-ef --version 10.*` — needed to scaffold migrations. Must match the EF Core package version, or every scaffold prints a version-mismatch warning. |
-| 5 | **REST client** | any | Optional. VS Code **REST Client**, Rider or Visual Studio `.http` support, or plain `curl` — the README's quick start uses curl and PowerShell only. |
+```bash
+docker compose exec db psql -U library -d library
+```
 
-Note: `dotnet test` needs Docker **running** — the integration suite uses Testcontainers to
-start a disposable PostgreSQL per run. The unit suite needs nothing.
+## To run the tests
 
-### Running the integration suite under Podman
+The unit suite needs nothing installed beyond the .NET SDK:
 
-Testcontainers speaks the Docker API, so Podman works — but not out of the box on Windows.
-Two environment variables are usually required, and the second one is the one that is easy to
-lose an hour to:
+```bash
+dotnet test tests/LibraryLoans.UnitTests
+```
+
+The integration suite additionally needs a **running container runtime**. It uses Testcontainers to
+start a disposable PostgreSQL on a random port, migrate it, and destroy it when the run ends — which
+is how the suite satisfies the requirement that tests never touch a development database. There is
+nothing to set up and nothing to clean up:
+
+```bash
+dotnet test
+```
+
+### Under Podman
+
+Testcontainers speaks the Docker API, so Podman works, but not out of the box on Windows:
 
 ```powershell
 podman machine start
 $env:DOCKER_HOST = "npipe:////./pipe/podman-machine-default"
 ```
 
-`DOCKER_HOST` points Testcontainers at Podman's socket instead of a Docker daemon that is not
-there.
+That points Testcontainers at Podman's socket rather than a Docker daemon that is not there.
 
-You do **not** need `TESTCONTAINERS_RYUK_DISABLED` — the suite already sets it, in
-`tests/LibraryLoans.IntegrationTests/Infrastructure/TestRunConfiguration.cs`. Ryuk is the
-sidecar Testcontainers normally starts to reap leftover containers, and it works by mounting the
-Docker socket, which hands a container control of the daemon for the whole run. The fixture owns
-one container and disposes it itself, so that privilege buys nothing here. It is disabled in
-code rather than left to each developer's environment, which also happens to remove the most
-common first failure under rootless Podman, where Ryuk cannot start and the error looks like an
-unrelated timeout.
+You do **not** need `TESTCONTAINERS_RYUK_DISABLED`. The suite sets it in
+`tests/LibraryLoans.IntegrationTests/Infrastructure/TestRunConfiguration.cs`, with the reasoning in
+that file: Ryuk is the sidecar Testcontainers normally starts to reap leftovers, and it works by
+mounting the Docker socket — handing a container control of the daemon for the whole run, to cover
+a case that only arises when a run crashes. The fixture owns one container and disposes it itself.
+Disabling it in code also removes the most common first failure under rootless Podman, where Ryuk
+cannot start and the error looks like an unrelated timeout.
 
-Without a container runtime, `dotnet test tests/LibraryLoans.UnitTests` still runs the entire
-unit suite, which covers every domain rule.
+## To develop it
 
-## Tier 3 — optional, quality of life
-
-| # | Tool | Why |
+| Tool | Version | Notes |
 |---|---|---|
-| 6 | **GitHub CLI (`gh`)** | `gh repo create` + pushing without leaving the terminal. |
-| 7 | **DBeaver** or **pgAdmin** | Eyeball the seeded data and confirm the partial unique index exists. `psql` inside the container also works: `docker compose exec db psql -U library -d library`. |
-| 8 | **k6** or `hey` | Only if we do the optional load-test appendix in the README. |
-
-## What we deliberately do NOT install
-
-- **SQL Server** — Postgres was chosen partly because SQL Server on Apple Silicon is a
-  liability, and the brief requires Mac *or* Windows.
-- **Redis** — no distributed cache in this build. It is listed in the README's
-  "what I'd do differently at scale" section as a deliberate omission.
-- **Any mocking / mapping / validation library** — mapping is hand-written and validation lives
-  in value objects. See the dependency rationale in the README.
+| **.NET SDK 10** | 10.0.302 | Pinned by `global.json`. .NET 9 is STS and left support on 12 May 2026; .NET 10 is LTS to November 2028. |
+| **dotnet-ef** | 10.x | `dotnet tool install --global dotnet-ef --version 10.*`. Only needed to scaffold new migrations; the committed ones apply without it. Keep it on the same version as the EF Core packages or every scaffold prints a mismatch warning. |
 
 ## Verify your environment
 
 ```bash
 docker --version          # or: podman --version
-docker compose version    # or: podman-compose --version
+docker compose version
 dotnet --list-sdks        # expect 10.0.3xx
 dotnet-ef --version       # expect 10.x
-git --version
 ```

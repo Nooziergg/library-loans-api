@@ -13,8 +13,15 @@ services:
       POSTGRES_USER: library
       POSTGRES_PASSWORD: library_dev_password
     ports:
-      # Exposed so `dotnet test` on the host can create its own throwaway test databases.
-      - "5432:5432"
+      # Deliberately NOT the default 5432. A reviewer with PostgreSQL already installed — which is
+      # most developer machines — would otherwise get a port-allocation failure on the very first
+      # command in the README, and nothing after that matters.
+      #
+      # The API reaches the database over the compose network and does not use this at all; it is
+      # here only so a tool like psql or DBeaver can connect from the host. The test suite does not
+      # need it either: Testcontainers starts its own PostgreSQL on a random port, which is what
+      # makes "tests never touch the development database" true by construction.
+      - "55432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

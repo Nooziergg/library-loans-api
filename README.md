@@ -269,6 +269,51 @@ cannot honour. Only the second is worth the cost of a database constraint. The s
 applies to a double return, where the outcome is idempotent in substance and nothing is promised
 twice.
 
+## What I would do differently at scale
+
+Everything below is deliberately absent. A library branch lending books is not a system with these
+problems, and building for them here would be harder to defend than leaving them out — but knowing
+*when* each one starts to pay is the point.
+
+**Migrations would stop running at startup.** They run on boot here so that `docker compose up` on
+a clean machine produces a working API with no manual step, and the flag makes that switchable. With
+more than one replica it becomes a race, and it hands the application's runtime identity permission
+to modify schema. In production this is a separate, single-shot deployment step against a database
+account the service itself does not have.
+
+**Authentication would be real**, via an external OIDC provider rather than anything built here. The
+design and the reasoning are in [docs/AUTHORIZATION.md](docs/AUTHORIZATION.md).
+
+**Observability would grow two things it does not have:** a correlation identifier threaded through
+every log line in a request, and distributed tracing. Logs are structured JSON on stdout today,
+which is the right foundation and the wrong stopping point once more than one service is involved.
+
+**Deep pagination would move to cursors.** Offset paging is correct and cheap for the page sizes a
+catalogue UI asks for, and degrades badly at page 5,000 because the database still walks the rows it
+skips.
+
+**Reads would separate from writes before caching is reached for.** The read and write ports are
+already distinct interfaces, so pointing queries at a replica is a change in one adapter rather than
+in every handler. A cache is the tempting first answer and the one that introduces invalidation
+bugs; a replica does not.
+
+**Loan history would be partitioned by date.** It is the only table that grows without bound, and
+every query against it is either recent or reporting — which is close to the ideal shape for range
+partitioning.
+
+**Who did what would be recorded on the aggregate, not only in a log.** At a bank an audit trail is
+a requirement rather than a debugging aid, and a log line is the wrong durability guarantee for one.
+
+**One race would get a concurrency token.** Two simultaneous returns can both write, which is
+accepted here because the outcome is idempotent in substance. `UseXminAsConcurrencyToken()` on
+`Loan` closes it in a line — and would convert a harmless lost update into a
+`DbUpdateConcurrencyException` that nothing currently translates, so it would arrive as a 500. That
+is a worse outcome than the problem, which is why the trade is stated rather than taken.
+
+**What would not change:** the domain. No aggregate learns about replicas, caches, partitions or
+roles. That is the return on the dependency rule, and it is the reason the rule is enforced by a
+test rather than a diagram.
+
 ## Documentation
 
 | Document | Contents |
