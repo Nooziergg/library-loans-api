@@ -26,5 +26,11 @@ internal sealed class BookRepository(LibraryDbContext dbContext) : IBookReposito
             .AsNoTracking()
             .FirstOrDefaultAsync(book => book.Id == id, cancellationToken);
 
+    /// <summary>Tracked, because the caller is about to change or remove what it loaded.</summary>
+    public Task<Book?> FindForUpdateAsync(Guid id, CancellationToken cancellationToken) =>
+        dbContext.Books.FirstOrDefaultAsync(book => book.Id == id, cancellationToken);
+
     public void Add(Book book) => dbContext.Books.Add(book);
+
+    public void Remove(Book book) => dbContext.Books.Remove(book);
 }

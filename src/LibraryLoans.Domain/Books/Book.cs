@@ -59,6 +59,61 @@ public sealed class Book
     /// </param>
     public static Result<Book> Create(Isbn isbn, string? title, string? author, int publishedYear, DateTimeOffset now)
     {
+        var details = ValidateDetails(title, author, publishedYear, now);
+        if (!details.IsSuccess)
+        {
+            return details.Error;
+        }
+
+        // Version 7 GUIDs are time-ordered, so inserts land at the end of the primary key's
+        // B-tree instead of scattering across it the way v4 does. The id is assigned here
+        // rather than by the database so the aggregate is complete and valid before it ever
+        // meets persistence.
+        return Result<Book>.Success(new Book(
+            Guid.CreateVersion7(),
+            isbn,
+            details.Value.Title,
+            details.Value.Author,
+            publishedYear));
+    }
+
+    /// <summary>
+    /// Corrects a catalogue entry — a misspelled title, an author's name, a wrong year.
+    ///
+    /// <b>The ISBN is not among them, and cannot be.</b> It identifies the work; a row whose ISBN
+    /// changed is describing a different book, and the honest shape of that operation is a delete
+    /// and a create. The request type has no ISBN field at all rather than accepting one and
+    /// rejecting a change — unrepresentable beats validated, which is the same argument this
+    /// codebase makes for value objects in the first place.
+    ///
+    /// Shares its validation with <see cref="Create"/> rather than repeating it, so the two cannot
+    /// drift into disagreeing about what a valid title is.
+    /// </summary>
+    public Result UpdateDetails(string? title, string? author, int publishedYear, DateTimeOffset now)
+    {
+        var details = ValidateDetails(title, author, publishedYear, now);
+        if (!details.IsSuccess)
+        {
+            return details.Error;
+        }
+
+        Title = details.Value.Title;
+        Author = details.Value.Author;
+        PublishedYear = publishedYear;
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// The rules about what a book's details may be, in one place, used by both the factory and the
+    /// update. Returns the trimmed values so the caller does not have to remember to trim.
+    /// </summary>
+    private static Result<(string Title, string Author)> ValidateDetails(
+        string? title,
+        string? author,
+        int publishedYear,
+        DateTimeOffset now)
+    {
         var trimmedTitle = title?.Trim();
         if (string.IsNullOrEmpty(trimmedTitle))
         {
@@ -87,11 +142,6 @@ public sealed class Book
             return BookErrors.PublishedYearOutOfRange(latestAllowedYear);
         }
 
-        // Version 7 GUIDs are time-ordered, so inserts land at the end of the primary key's
-        // B-tree instead of scattering across it the way v4 does. The id is assigned here
-        // rather than by the database so the aggregate is complete and valid before it ever
-        // meets persistence.
-        return Result<Book>.Success(
-            new Book(Guid.CreateVersion7(), isbn, trimmedTitle, trimmedAuthor, publishedYear));
+        return Result<(string, string)>.Success((trimmedTitle, trimmedAuthor));
     }
 }

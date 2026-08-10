@@ -54,6 +54,17 @@ internal static class BooksEndpoints
             .WithName(GetBookByIdRouteName)
             .WithSummary("Fetches a single title.");
 
+        books.MapPut("/{id:guid}", UpdateAsync)
+            // .RequireAuthorization("RequireLibrarian")
+            .AddEndpointFilter<ValidationFilter<UpdateBookRequest>>()
+            .WithName("UpdateBook")
+            .WithSummary("Corrects a title's details. The ISBN is not editable.");
+
+        books.MapDelete("/{id:guid}", DeleteAsync)
+            // .RequireAuthorization("RequireLibrarian")
+            .WithName("DeleteBook")
+            .WithSummary("Removes a title and its copies, if it has never been borrowed.");
+
         return api;
     }
 
@@ -93,6 +104,32 @@ internal static class BooksEndpoints
 
         return result.IsSuccess
             ? TypedResults.Ok(result.Value)
+            : DomainErrorToHttp.ToProblem(result.Error);
+    }
+
+    private static async Task<Results<Ok<BookResponse>, ProblemHttpResult>> UpdateAsync(
+        Guid id,
+        UpdateBookRequest request,
+        UpdateBookHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(request.ToCommand(id), cancellationToken);
+
+        return result.IsSuccess
+            ? TypedResults.Ok(result.Value)
+            : DomainErrorToHttp.ToProblem(result.Error);
+    }
+
+    private static async Task<Results<NoContent, ProblemHttpResult>> DeleteAsync(
+        Guid id,
+        DeleteBookHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(id, cancellationToken);
+
+        // 204 rather than 200 with a body: there is nothing left to describe.
+        return result.IsSuccess
+            ? TypedResults.NoContent()
             : DomainErrorToHttp.ToProblem(result.Error);
     }
 }

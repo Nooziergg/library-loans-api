@@ -21,6 +21,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<CreateBookHandler>();
         services.AddScoped<GetBookByIdHandler>();
         services.AddScoped<SearchBooksHandler>();
+        services.AddScoped<UpdateBookHandler>();
+        services.AddScoped<DeleteBookHandler>();
         services.AddScoped<RegisterMemberHandler>();
         services.AddScoped<GetMemberByIdHandler>();
         services.AddScoped<SearchMembersHandler>();

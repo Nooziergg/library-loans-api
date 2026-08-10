@@ -17,5 +17,15 @@ internal sealed class BookCopyRepository(LibraryDbContext dbContext) : IBookCopy
             .AsNoTracking()
             .FirstOrDefaultAsync(copy => copy.Id == id, cancellationToken);
 
+    /// <summary>Tracked, because these are about to be removed.</summary>
+    public async Task<IReadOnlyList<BookCopy>> FindAllForBookForUpdateAsync(
+        Guid bookId,
+        CancellationToken cancellationToken) =>
+        await dbContext.BookCopies
+            .Where(copy => copy.BookId == bookId)
+            .ToListAsync(cancellationToken);
+
     public void Add(BookCopy copy) => dbContext.BookCopies.Add(copy);
+
+    public void RemoveRange(IReadOnlyList<BookCopy> copies) => dbContext.BookCopies.RemoveRange(copies);
 }

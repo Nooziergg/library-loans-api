@@ -11,6 +11,27 @@ internal sealed class LoanRepository(LibraryDbContext dbContext) : ILoanReposito
             .AsNoTracking()
             .AnyAsync(loan => loan.BookCopyId == bookCopyId && loan.ReturnedAt == null, cancellationToken);
 
+    /// <summary>
+    /// Whether any copy of a title is currently out. Joins through copies rather than denormalising
+    /// a book id onto loans — a loan is against a copy, and adding the title to it would create a
+    /// second place the relationship is recorded.
+    /// </summary>
+    public Task<bool> HasActiveLoanForBookAsync(Guid bookId, CancellationToken cancellationToken) =>
+        dbContext.Loans
+            .AsNoTracking()
+            .AnyAsync(
+                loan => loan.ReturnedAt == null &&
+                        dbContext.BookCopies.Any(copy => copy.Id == loan.BookCopyId && copy.BookId == bookId),
+                cancellationToken);
+
+    /// <summary>Whether any loan at all, returned or not, references a copy of the title.</summary>
+    public Task<bool> HasAnyLoanForBookAsync(Guid bookId, CancellationToken cancellationToken) =>
+        dbContext.Loans
+            .AsNoTracking()
+            .AnyAsync(
+                loan => dbContext.BookCopies.Any(copy => copy.Id == loan.BookCopyId && copy.BookId == bookId),
+                cancellationToken);
+
     public Task<int> CountActiveLoansForMemberAsync(Guid memberId, CancellationToken cancellationToken) =>
         dbContext.Loans
             .AsNoTracking()

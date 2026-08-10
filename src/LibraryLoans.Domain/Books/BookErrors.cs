@@ -75,6 +75,28 @@ public static class BookErrors
             "book.published_year.out_of_range",
             $"A published year must be between {Book.EarliestPublishedYear} and {latestAllowed}.");
 
+    /// <summary>
+    /// Deletion refused because a copy is out. <b>Retryable</b> — the same request will succeed once
+    /// the copy comes back, which is why it is a separate code from
+    /// <see cref="HasLoanHistory"/>. Collapsing the two into one message would lose the only part a
+    /// caller can act on.
+    /// </summary>
+    public static DomainError CopyOnLoan() =>
+        DomainError.Conflict(
+            "book.copy_on_loan",
+            "A copy of this book is currently on loan. It can be deleted once every copy is back.");
+
+    /// <summary>
+    /// Deletion refused because the book has been borrowed at some point. <b>Not</b> retryable:
+    /// lending history is a record, and removing the book would remove the loans that reference its
+    /// copies. Withdrawing a title from circulation without erasing its history is a different
+    /// operation, and one this system does not have yet.
+    /// </summary>
+    public static DomainError HasLoanHistory() =>
+        DomainError.Conflict(
+            "book.has_loan_history",
+            "This book has lending history and cannot be deleted, because doing so would erase it.");
+
     public static DomainError NotFound(Guid id) =>
         DomainError.NotFound("book.not_found", $"No book exists with id {id}.");
 }

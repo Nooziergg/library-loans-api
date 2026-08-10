@@ -30,7 +30,21 @@ internal sealed class InMemoryBookRepository : IBookRepository
     public Task<Book?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
         Task.FromResult(_preexisting.Concat(_added).FirstOrDefault(book => book.Id == id));
 
+    /// <summary>Same objects as <see cref="GetByIdAsync"/> — a fake has no change tracker to model.</summary>
+    public Task<Book?> FindForUpdateAsync(Guid id, CancellationToken cancellationToken) =>
+        GetByIdAsync(id, cancellationToken);
+
     public void Add(Book book) => _added.Add(book);
+
+    /// <summary>Records removals so a handler that forgets to remove something is visible.</summary>
+    public void Remove(Book book)
+    {
+        Removed.Add(book);
+        _preexisting.Remove(book);
+        _added.Remove(book);
+    }
+
+    public List<Book> Removed { get; } = [];
 
     /// <summary>Puts a book in the repository as though it were already there.</summary>
     public void Seed(Book book) => _preexisting.Add(book);

@@ -29,5 +29,10 @@ public interface IBookRepository
     /// <see cref="Abstractions.IUnitOfWork.SaveChangesAsync"/> runs, and an <c>async</c>
     /// signature here would imply otherwise.
     /// </summary>
+    /// <summary>Tracked, because the caller is about to change or remove what it loaded.</summary>
+    Task<Book?> FindForUpdateAsync(Guid id, CancellationToken cancellationToken);
+
     void Add(Book book);
+
+    void Remove(Book book);
 }

@@ -36,27 +36,33 @@ internal sealed class UnitOfWork(LibraryDbContext dbContext, ILogger<UnitOfWork>
             return Result<int>.Success(await dbContext.SaveChangesAsync(cancellationToken));
         }
         catch (DbUpdateException exception)
-            when (exception.InnerException is PostgresException
-                  {
-                      SqlState: PostgresErrorCodes.UniqueViolation,
-                  } postgresException)
+            when (exception.InnerException is PostgresException postgresException &&
+                  Translate(postgresException) is { } error)
         {
-            var error = UniqueConstraintTranslation.Translate(postgresException.ConstraintName);
-
-            if (error is null)
-            {
-                // A uniqueness rule exists in the schema that nothing here knows how to
-                // describe. Rethrowing surfaces it as a 500 and a logged fault, which is
-                // correct: guessing at a friendly message would hide a real modelling gap.
-                throw;
-            }
-
             logger.LogInformation(
-                "Write rejected by unique constraint {ConstraintName}, reported as {ErrorCode}",
+                "Write rejected by constraint {ConstraintName} ({SqlState}), reported as {ErrorCode}",
                 postgresException.ConstraintName,
+                postgresException.SqlState,
                 error.Code);
 
             return Result<int>.Failure(error);
         }
     }
+
+    /// <summary>
+    /// Maps a PostgreSQL rejection to the domain error it means, or null if nothing here knows.
+    ///
+    /// Returning null lets the exception filter above decline the catch entirely, so the exception
+    /// propagates with its original stack rather than being caught and rethrown. A constraint
+    /// nobody has mapped is a modelling gap: it should surface as a 500 and a logged fault, because
+    /// guessing at a friendly message would hide it.
+    /// </summary>
+    private static DomainError? Translate(PostgresException exception) => exception.SqlState switch
+    {
+        PostgresErrorCodes.UniqueViolation =>
+            DatabaseConstraintTranslation.TranslateUniqueViolation(exception.ConstraintName),
+        PostgresErrorCodes.ForeignKeyViolation =>
+            DatabaseConstraintTranslation.TranslateForeignKeyViolation(exception.ConstraintName),
+        _ => null,
+    };
 }

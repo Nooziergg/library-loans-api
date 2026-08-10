@@ -36,6 +36,22 @@ internal sealed class InMemoryLoanRepository : ILoanRepository
         return Task.FromResult(_preexisting.Count(loan => loan.MemberId == memberId && loan.IsActive));
     }
 
+    /// <summary>
+    /// Set by a test to say what the loan register would report about a title. Kept as explicit
+    /// switches rather than derived from seeded loans, because the delete handler's two
+    /// preconditions differ only in which of these is true, and a test should be able to say which
+    /// case it is arranging.
+    /// </summary>
+    public bool BookHasActiveLoan { get; set; }
+
+    public bool BookHasAnyLoan { get; set; }
+
+    public Task<bool> HasActiveLoanForBookAsync(Guid bookId, CancellationToken cancellationToken) =>
+        Task.FromResult(BookHasActiveLoan);
+
+    public Task<bool> HasAnyLoanForBookAsync(Guid bookId, CancellationToken cancellationToken) =>
+        Task.FromResult(BookHasAnyLoan);
+
     public Task<Loan?> FindForUpdateAsync(Guid id, CancellationToken cancellationToken) =>
         Task.FromResult(_preexisting.Concat(_added).FirstOrDefault(loan => loan.Id == id));
 
