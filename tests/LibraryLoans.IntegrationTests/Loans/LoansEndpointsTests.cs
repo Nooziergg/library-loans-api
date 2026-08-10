@@ -195,6 +195,15 @@ public sealed class LoansEndpointsTests : IAsyncLifetime
     /// over by truncating in the domain or by re-reading after every write. A client that stores a
     /// creation response and later compares it field-by-field to a fetch will see this, which is a
     /// good reason for the comparison to be on the identifier.
+    ///
+    /// The tolerance is ten ticks — one microsecond — because that is exactly what the cause
+    /// permits, not a round number chosen for comfort. Anything looser would also pass if a handler
+    /// re-read the clock, a timezone conversion crept in, or a rounding behaviour changed, none of
+    /// which this test means to allow.
+    ///
+    /// Note that <c>BooksEndpointsTests</c> asserts full record equality for the same property.
+    /// That is not an inconsistency: <c>BookResponse</c> carries no timestamp, so nothing there is
+    /// subject to storage precision.
     /// </summary>
     [Fact]
     public async Task Serves_a_loan_back_from_the_location_header()
@@ -216,8 +225,26 @@ public sealed class LoansEndpointsTests : IAsyncLifetime
         Assert.Equal(createdLoan.BookCopyId, fetchedLoan.BookCopyId);
         Assert.Equal(createdLoan.MemberId, fetchedLoan.MemberId);
         Assert.Null(fetchedLoan.ReturnedAt);
-        Assert.True((createdLoan.LoanedAt - fetchedLoan.LoanedAt).Duration() < TimeSpan.FromMilliseconds(1));
-        Assert.True((createdLoan.DueAt - fetchedLoan.DueAt).Duration() < TimeSpan.FromMilliseconds(1));
+        Assert.True((createdLoan.LoanedAt - fetchedLoan.LoanedAt).Duration() <= TimeSpan.FromTicks(10));
+        Assert.True((createdLoan.DueAt - fetchedLoan.DueAt).Duration() <= TimeSpan.FromTicks(10));
+    }
+
+    /// <summary>
+    /// A missing field is a malformed request and must be answered as one. Before the request's ids
+    /// were made nullable this returned 404 describing a copy of all zeros, because
+    /// <c>[Required]</c> on a non-nullable <c>Guid</c> sees <c>Guid.Empty</c> and passes — a missing
+    /// field reported as a missing resource, and a different status class from the one a literal
+    /// null in the same position produces.
+    /// </summary>
+    [Fact]
+    public async Task Rejects_a_request_missing_required_fields_with_400()
+    {
+        var withNothing = await _client.PostAsJsonAsync("/api/v1/loans", new { });
+        Assert.Equal(HttpStatusCode.BadRequest, withNothing.StatusCode);
+
+        var (copyId, _) = await ArrangeCopyAndMemberAsync();
+        var withoutMember = await _client.PostAsJsonAsync("/api/v1/loans", new { bookCopyId = copyId });
+        Assert.Equal(HttpStatusCode.BadRequest, withoutMember.StatusCode);
     }
 
     [Fact]
@@ -257,7 +284,7 @@ public sealed class LoansEndpointsTests : IAsyncLifetime
         });
 
         response.EnsureSuccessStatusCode();
-        var body = await response.Content.ReadFromJsonAsync<BookIdOnly>();
+        var body = await response.Content.ReadFromJsonAsync<CreatedResourceId>();
         return body!.Id;
     }
 
@@ -269,7 +296,7 @@ public sealed class LoansEndpointsTests : IAsyncLifetime
             new { barcode = $"COPY-{suffix:D4}" });
 
         response.EnsureSuccessStatusCode();
-        var body = await response.Content.ReadFromJsonAsync<BookIdOnly>();
+        var body = await response.Content.ReadFromJsonAsync<CreatedResourceId>();
         return body!.Id;
     }
 
@@ -284,7 +311,7 @@ public sealed class LoansEndpointsTests : IAsyncLifetime
         });
 
         response.EnsureSuccessStatusCode();
-        var body = await response.Content.ReadFromJsonAsync<BookIdOnly>();
+        var body = await response.Content.ReadFromJsonAsync<CreatedResourceId>();
         return body!.Id;
     }
 
@@ -308,5 +335,5 @@ public sealed class LoansEndpointsTests : IAsyncLifetime
         await dbContext.SaveChangesAsync();
     }
 
-    private sealed record BookIdOnly(Guid Id);
+    private sealed record CreatedResourceId(Guid Id);
 }

@@ -5,15 +5,24 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace LibraryLoans.Api.Loans;
 
+/// <summary>
+/// Nullable on purpose. <c>[Required]</c> on a non-nullable <c>Guid</c> is a no-op: the validator
+/// sees <c>Guid.Empty</c> rather than null and passes, so an omitted field would reach the handler
+/// as all zeros and come back as <c>404 book_copy.not_found</c> — a missing field reported as a
+/// missing resource, and a different status class from the one a null in the same position
+/// produces. Making them nullable is what lets the attribute mean what it says.
+/// </summary>
 public sealed record BorrowCopyRequest
 {
     [Required]
-    public Guid MemberId { get; init; }
+    public Guid? MemberId { get; init; }
 
     [Required]
-    public Guid BookCopyId { get; init; }
+    public Guid? BookCopyId { get; init; }
 
-    public BorrowCopyCommand ToCommand() => new(MemberId, BookCopyId);
+    // Safe to dereference: the validation filter runs before the endpoint and has already rejected
+    // the request if either is absent.
+    public BorrowCopyCommand ToCommand() => new(MemberId!.Value, BookCopyId!.Value);
 }
 
 internal static class LoansEndpoints

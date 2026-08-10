@@ -21,6 +21,14 @@ public sealed class Member
     /// <summary>The maximum length of an email address, per RFC 5321's practical limit.</summary>
     public const int EmailMaxLength = 254;
 
+    /// <summary>
+    /// Width of the status column. The status is stored as text rather than as the enum's underlying
+    /// integer so the schema reads without a lookup, which means it needs a width — and that width
+    /// belongs here beside the values it has to accommodate, not as a bare number in a mapping file.
+    /// A future status longer than this would be SQLSTATE 22001 and a 500.
+    /// </summary>
+    public const int StatusMaxLength = 16;
+
     /// <summary>Materialization path for the ORM only.</summary>
     private Member()
     {

@@ -19,14 +19,18 @@ internal sealed class LoanConfiguration : IEntityTypeConfiguration<Loan>
     /// cannot leave the filter pointing at a column that no longer exists.
     /// </summary>
     private const string ReturnedAtColumn = "returned_at";
+    private const string LoanedAtColumn = "loaned_at";
+    private const string DueAtColumn = "due_at";
 
     public void Configure(EntityTypeBuilder<Loan> builder)
     {
         builder.ToTable(
             "loans",
+            // Raw SQL again, so the column names come from the same constants the mapping uses —
+            // the compiler cannot check either string against the model.
             table => table.HasCheckConstraint(
                 DatabaseConstraints.LoansDueAfterLoanedCheck,
-                $"due_at > loaned_at"));
+                $"{DueAtColumn} > {LoanedAtColumn}"));
 
         builder.HasKey(loan => loan.Id)
             .HasName(DatabaseConstraints.LoansPrimaryKey);
@@ -44,11 +48,11 @@ internal sealed class LoanConfiguration : IEntityTypeConfiguration<Loan>
             .IsRequired();
 
         builder.Property(loan => loan.LoanedAt)
-            .HasColumnName("loaned_at")
+            .HasColumnName(LoanedAtColumn)
             .IsRequired();
 
         builder.Property(loan => loan.DueAt)
-            .HasColumnName("due_at")
+            .HasColumnName(DueAtColumn)
             .IsRequired();
 
         // Nullable, and that null is the definition of "active" throughout the system.

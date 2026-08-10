@@ -2,13 +2,19 @@
 
 > ## ⚠ Read this first: this document is part design, part built
 >
-> It describes the intended architecture of the whole system. **Not all of it exists yet.** The
-> repository currently contains a complete vertical slice — the book catalogue — through every
-> layer, and the aggregates around loans are designed here but not implemented.
+> It describes the intended architecture of the whole system. **Not all of it exists yet.**
 >
-> Sections are marked **BUILT** or **DESIGNED, NOT BUILT** so nothing here has to be taken on
-> trust. Where a section is unbuilt, the diagram is a specification of intent, not a claim about
-> the artifact.
+> What does: the catalogue and the lending cycle. Books, physical copies, members and loans are
+> implemented through every layer, and with them every domain rule this system claims — including
+> the one that shapes the design, that a copy cannot be on two active loans at once.
+>
+> What does not: the parts of the copy and member lifecycles that no current rule needs (retiring a
+> copy, renewing a loan, reinstating a suspended member), the read and write breadth beyond what is
+> listed in the README, seed data, and authentication.
+>
+> Sections are marked **BUILT**, **PARTIAL** or **DESIGNED, NOT BUILT** so nothing here has to be
+> taken on trust. Where something is unbuilt, the diagram is a specification of intent, not a claim
+> about the artifact, and it says so where it appears.
 >
 > | Section | State |
 > |---|---|
@@ -149,7 +155,7 @@ erDiagram
         timestamptz LoanedAt
         timestamptz DueAt
         timestamptz ReturnedAt "null = active"
-        int RenewalCount
+        int RenewalCount "DESIGNED, not in the schema"
     }
 ```
 
@@ -346,7 +352,7 @@ an email address in a log field during a review and retrofitting the rule across
 
 ## 7. Reading order for a reviewer
 
-Four files that exist today, in this order, tell most of the story:
+Six files that exist today, in this order, tell most of the story:
 
 1. **`src/LibraryLoans.Domain/Loans/Loan.cs`** — every rule about whether a copy may leave the
    building, in one file, with the reasoning for the guard order and for which races are accepted

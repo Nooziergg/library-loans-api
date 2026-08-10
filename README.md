@@ -23,7 +23,7 @@ working API:
 - RFC 7807 for every failure; exception messages never reach a client
 - EF Core on PostgreSQL, migrations committed and applied on startup
 - An OpenAPI document at `/openapi/v1.json`
-- 139 unit tests and 21 integration tests, the latter against a disposable PostgreSQL that
+- 143 unit tests and 30 integration tests, the latter against a disposable PostgreSQL that
   Testcontainers creates and destroys per run
 
 ### The rules, and where each is enforced
@@ -37,7 +37,8 @@ working API:
 | A member holds at most 5 active loans | `Loan.Open` | — (accepted race, see below) |
 | A suspended member cannot borrow | `Loan.Open` | — |
 | A loan cannot be returned twice | `Loan.Return` | — |
-| A loan is due 14 days after it is taken | `Loan.Open` | check constraint |
+| A loan is due 14 days after it is taken | `Loan.Open` | — the period is policy, not a schema rule |
+| A loan's due date is after its loan date | `Loan.Open`, by construction | check constraint `due_at > loaned_at` |
 
 **Not built yet:**
 

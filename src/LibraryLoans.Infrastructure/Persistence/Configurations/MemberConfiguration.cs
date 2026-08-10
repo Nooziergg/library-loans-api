@@ -48,7 +48,7 @@ internal sealed class MemberConfiguration : IEntityTypeConfiguration<Member>
         // psql without a trip into source to learn that 1 means Suspended.
         builder.Property(member => member.Status)
             .HasColumnName("status")
-            .HasMaxLength(16)
+            .HasMaxLength(Member.StatusMaxLength)
             .HasConversion<string>()
             .IsRequired();
 

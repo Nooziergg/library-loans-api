@@ -21,9 +21,11 @@ namespace LibraryLoans.Domain.Copies;
 public sealed record Barcode
 {
     /// <summary>
-    /// One constant for both the input bound and the column width. See the note on
-    /// <see cref="Members.MembershipNumber.Length"/> for why these must not be separate values
-    /// here even though <see cref="Books.Isbn"/> legitimately has two.
+    /// One constant serving as both the input bound and the column width, and here they genuinely
+    /// must be the same number: a barcode has no fixed length, so nothing downstream pins the
+    /// stored value to a narrower size the way <see cref="Members.MembershipNumber"/>'s format check
+    /// does. If this exceeded the column, PostgreSQL would answer SQLSTATE 22001 — not a unique
+    /// violation, so nothing translates it, and a public endpoint would return 500.
     /// </summary>
     public const int MaxLength = 32;
 
@@ -38,8 +40,14 @@ public sealed record Barcode
             return BookCopyErrors.BarcodeRequired();
         }
 
-        // Bounded before any work proportional to the input, as in Isbn.Create. Trimming cannot
-        // lengthen a string, so a value that is too long here is too long after trimming.
+        // Bounded before any work proportional to the input, as in Isbn.Create.
+        //
+        // Checking before trimming is conservative rather than exact: trimming cannot lengthen a
+        // string, so anything within the bound here is still within it afterwards, which is what
+        // makes the pre-trim check safe as a cap. It does mean a value padded past the bound is
+        // rejected even though it would have fitted once trimmed — accepted, because the bound
+        // exists to stop an allocation being sized by a caller, and the alternative is allocating
+        // first and checking second.
         if (input.Length > MaxLength)
         {
             return BookCopyErrors.BarcodeTooLong();

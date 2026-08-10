@@ -16,15 +16,17 @@ namespace LibraryLoans.Domain.Members;
 public sealed record MembershipNumber
 {
     /// <summary>
-    /// One constant, serving both the bound on input and the width of the column.
+    /// The stored width, and the exact length of every canonical value.
     ///
-    /// <see cref="Books.Isbn"/> needs two — one for input, one for storage — because
-    /// canonicalisation there strips separators and shortens the string. Here canonicalisation only
-    /// trims and uppercases, neither of which can lengthen the value, so input length and stored
-    /// length are the same number and must not be allowed to drift apart. If they did, a value
-    /// object accepting more characters than the column holds would produce PostgreSQL's SQLSTATE
-    /// 22001 on write. That is not a unique violation, so nothing translates it, and a public
-    /// endpoint would answer 500 for input the caller controls.
+    /// This format is fixed-length, which is what lets <see cref="MaxInputLength"/> be a separate
+    /// and much larger number: the parser requires the trimmed value to be exactly this many
+    /// characters, so no accepted value can be wider than the column however generous the input cap
+    /// is. <see cref="Copies.Barcode"/> cannot do that — a barcode's length is not fixed, so there
+    /// one constant has to serve as both the input bound and the column width.
+    ///
+    /// The thing to avoid in either case is a value object that accepts more characters than the
+    /// column holds. PostgreSQL answers that with SQLSTATE 22001, which is not a unique violation,
+    /// so nothing translates it and a public endpoint returns 500 for input the caller controls.
     /// </summary>
     public const int Length = 9;
 
