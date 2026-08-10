@@ -1,5 +1,8 @@
 using LibraryLoans.Application.Abstractions;
 using LibraryLoans.Application.Books;
+using LibraryLoans.Application.Copies;
+using LibraryLoans.Application.Loans;
+using LibraryLoans.Application.Members;
 using LibraryLoans.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -51,6 +54,10 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IBookRepository, BookRepository>();
         services.AddScoped<IBookQueries, BookQueries>();
+        services.AddScoped<IBookCopyRepository, BookCopyRepository>();
+        services.AddScoped<IMemberRepository, MemberRepository>();
+        services.AddScoped<ILoanRepository, LoanRepository>();
+        services.AddScoped<ILoanQueries, LoanQueries>();
 
         return services;
     }

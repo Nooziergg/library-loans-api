@@ -1,4 +1,7 @@
 using LibraryLoans.Domain.Books;
+using LibraryLoans.Domain.Copies;
+using LibraryLoans.Domain.Loans;
+using LibraryLoans.Domain.Members;
 using Microsoft.EntityFrameworkCore;
 
 namespace LibraryLoans.Infrastructure.Persistence;
@@ -13,6 +16,12 @@ namespace LibraryLoans.Infrastructure.Persistence;
 public sealed class LibraryDbContext(DbContextOptions<LibraryDbContext> options) : DbContext(options)
 {
     public DbSet<Book> Books => Set<Book>();
+
+    public DbSet<BookCopy> BookCopies => Set<BookCopy>();
+
+    public DbSet<Member> Members => Set<Member>();
+
+    public DbSet<Loan> Loans => Set<Loan>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

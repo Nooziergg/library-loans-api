@@ -17,5 +17,14 @@ internal sealed class BookRepository(LibraryDbContext dbContext) : IBookReposito
             .AsNoTracking()
             .AnyAsync(book => book.Isbn == isbn, cancellationToken);
 
+    /// <summary>
+    /// Untracked: the caller needs the aggregate as proof the title exists, not in order to change
+    /// it.
+    /// </summary>
+    public Task<Book?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
+        dbContext.Books
+            .AsNoTracking()
+            .FirstOrDefaultAsync(book => book.Id == id, cancellationToken);
+
     public void Add(Book book) => dbContext.Books.Add(book);
 }

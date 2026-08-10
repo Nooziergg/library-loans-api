@@ -1,5 +1,8 @@
 using LibraryLoans.Api.Books;
+using LibraryLoans.Api.Copies;
 using LibraryLoans.Api.Http;
+using LibraryLoans.Api.Loans;
+using LibraryLoans.Api.Members;
 using LibraryLoans.Application;
 using LibraryLoans.Infrastructure;
 using LibraryLoans.Infrastructure.Persistence;
@@ -136,6 +139,9 @@ var api = app.MapGroup("/api/v1");
 //     pressure is the one nobody remembers.
 
 api.MapBooks();
+api.MapBookCopies();
+api.MapMembers();
+api.MapLoans();
 
 app.Run();
 

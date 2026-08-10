@@ -61,4 +61,49 @@ public sealed class ResultTests
         Assert.False(result.IsSuccess);
         Assert.Equal(error, result.Error);
     }
+
+    /// <summary>
+    /// The non-generic form, used by state transitions that mutate an aggregate the caller already
+    /// holds. Same edges, pinned separately because it is a separate type by deliberate choice.
+    /// </summary>
+    public sealed class NonGeneric
+    {
+        [Fact]
+        public void A_success_carries_no_error()
+        {
+            var result = Result.Success();
+
+            Assert.True(result.IsSuccess);
+        }
+
+        [Fact]
+        public void A_failure_carries_its_error()
+        {
+            var error = DomainError.Conflict("thing.duplicate", "Already exists.");
+
+            var result = Result.Failure(error);
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal(error, result.Error);
+        }
+
+        [Fact]
+        public void Reading_the_error_of_a_success_throws()
+        {
+            var result = Result.Success();
+
+            Assert.Throws<InvalidOperationException>(() => result.Error);
+        }
+
+        [Fact]
+        public void A_domain_error_converts_implicitly_to_a_failure()
+        {
+            var error = DomainError.RuleViolation("thing.not_allowed", "No.");
+
+            Result result = error;
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal(error, result.Error);
+        }
+    }
 }

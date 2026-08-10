@@ -27,6 +27,9 @@ internal sealed class InMemoryBookRepository : IBookRepository
     public Task<bool> ExistsWithIsbnAsync(Isbn isbn, CancellationToken cancellationToken) =>
         Task.FromResult(_preexisting.Concat(_added).Any(book => book.Isbn == isbn));
 
+    public Task<Book?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
+        Task.FromResult(_preexisting.Concat(_added).FirstOrDefault(book => book.Id == id));
+
     public void Add(Book book) => _added.Add(book);
 
     /// <summary>Puts a book in the repository as though it were already there.</summary>

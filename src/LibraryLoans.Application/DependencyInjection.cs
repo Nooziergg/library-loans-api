@@ -1,4 +1,7 @@
 using LibraryLoans.Application.Books;
+using LibraryLoans.Application.Copies;
+using LibraryLoans.Application.Loans;
+using LibraryLoans.Application.Members;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace LibraryLoans.Application;
@@ -17,6 +20,11 @@ public static class ApplicationServiceCollectionExtensions
     {
         services.AddScoped<CreateBookHandler>();
         services.AddScoped<GetBookByIdHandler>();
+        services.AddScoped<RegisterMemberHandler>();
+        services.AddScoped<AddBookCopyHandler>();
+        services.AddScoped<BorrowCopyHandler>();
+        services.AddScoped<ReturnLoanHandler>();
+        services.AddScoped<GetLoanByIdHandler>();
 
         return services;
     }
