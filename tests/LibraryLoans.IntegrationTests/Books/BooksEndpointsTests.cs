@@ -138,8 +138,8 @@ public sealed class BooksEndpointsTests : IAsyncLifetime
     /// wins. Without translating its violation into a 409, the loser would receive a 500 — a
     /// server fault reported for what is really an ordinary, expected outcome.
     ///
-    /// The same mechanism carries the loan invariant in P2, where the stakes are higher: a copy
-    /// on two active loans at once.
+    /// The same mechanism is what a higher-stakes invariant needs — a physical copy on two active
+    /// loans at once is the version of this bug that a library cannot honour.
     /// </summary>
     [Fact]
     public async Task Allows_exactly_one_of_two_simultaneous_creates_of_the_same_isbn()

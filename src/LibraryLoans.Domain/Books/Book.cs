@@ -3,8 +3,9 @@ using LibraryLoans.Domain.Common;
 namespace LibraryLoans.Domain.Books;
 
 /// <summary>
-/// A catalogue title — the work, not a physical object. The things a borrower actually carries
-/// home are <c>BookCopy</c> instances, added in P2.
+/// A catalogue title — the work, not a physical object. What a borrower actually carries home is
+/// a physical copy of it, which is a separate concept: a library holds one Book and several
+/// copies of it, and a loan is against a copy rather than against the title.
 /// </summary>
 public sealed class Book
 {

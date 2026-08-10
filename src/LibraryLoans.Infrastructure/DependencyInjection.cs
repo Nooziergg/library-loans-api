@@ -39,8 +39,8 @@ public static class InfrastructureServiceCollectionExtensions
                 //
                 // 1. An execution strategy refuses user-initiated transactions unless they are
                 //    wrapped in strategy.ExecuteAsync(...), because it cannot retry a block it
-                //    does not control. The first explicit transaction here will be the borrow
-                //    path in P2.
+                //    does not control. Anything that opens an explicit transaction has to know
+                //    this.
                 // 2. A unique violation is NOT transient and is not retried, so this cannot
                 //    turn a lost race into a duplicate insert.
                 npgsql.EnableRetryOnFailure()));

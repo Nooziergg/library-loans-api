@@ -18,9 +18,9 @@ namespace LibraryLoans.IntegrationTests.Books;
 /// rethrow, clients would start getting 500s instead of 409s, and the suite would stay green.
 ///
 /// Driving the repository and unit of work directly removes the race and makes the constraint
-/// name a tested contract against a real PostgreSQL. The same mechanism carries the loan
-/// invariant in P2, where a silent 500 in place of a 409 is precisely the failure this project
-/// exists to avoid.
+/// name a tested contract against a real PostgreSQL. The same mechanism is what any
+/// higher-stakes uniqueness rule depends on, and there a silent 500 in place of a 409 would be
+/// the difference between a rule that holds and one that only usually holds.
 /// </summary>
 [Collection(DatabaseCollection.Name)]
 public sealed class UniqueConstraintTranslationTests : IAsyncLifetime

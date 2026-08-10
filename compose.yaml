@@ -37,9 +37,10 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_HTTP_PORTS: 8080
       ConnectionStrings__Default: "Host=db;Port=5432;Database=library;Username=library;Password=library_dev_password"
-      # Applied on startup for reviewer convenience. See README for why production differs.
-      # SEED_ON_STARTUP arrives with the seeder in P5; a flag nothing reads is worse than no
-      # flag, because it reads as configuration that works.
+      # Migrations are applied on startup for convenience on a clean machine. The README explains
+      # why a production deployment would not do this. Only flags the application actually reads
+      # appear here — a flag nothing consumes is worse than no flag, because it reads as
+      # configuration that works.
       MIGRATE_ON_STARTUP: "true"
     ports:
       - "8080:8080"

@@ -19,7 +19,7 @@ Azure account. This is deliberate and gets stated in the README.
 |---|---|---|---|
 | 3 | **.NET SDK 10** | 10.0.302 ✅ installed | Pinned by `global.json`. .NET 9 is STS and left support on 12 May 2026; .NET 10 is LTS to Nov 2028. |
 | 4 | **dotnet-ef CLI** | 10.x | `dotnet tool install --global dotnet-ef --version 10.*` — needed to scaffold migrations. Must match the EF Core package version, or every scaffold prints a version-mismatch warning. |
-| 5 | **REST client** | any | VS Code **REST Client** extension, or Rider/Visual Studio built-in `.http` support. We ship a `requests.http`. |
+| 5 | **REST client** | any | Optional. VS Code **REST Client**, Rider or Visual Studio `.http` support, or plain `curl` — the README's quick start uses curl and PowerShell only. |
 
 Note: `dotnet test` needs Docker **running** — the integration suite uses Testcontainers to
 start a disposable PostgreSQL per run. The unit suite needs nothing.
@@ -72,7 +72,7 @@ unit suite, which covers every domain rule.
 ```bash
 docker --version          # or: podman --version
 docker compose version    # or: podman-compose --version
-dotnet --list-sdks        # expect 9.0.3xx
-dotnet-ef --version       # expect 9.x
+dotnet --list-sdks        # expect 10.0.3xx
+dotnet-ef --version       # expect 10.x
 git --version
 ```
