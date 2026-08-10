@@ -10,6 +10,15 @@
   </ItemGroup>
 
   <!--
+    First-party OpenAPI document generation, so the API is discoverable without reading its
+    source. Note the transitive pin on Microsoft.OpenApi in Directory.Packages.props — this
+    package's own dependency on it is affected by a published CVE.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+  </ItemGroup>
+
+  <!--
     The request-validation filter and the domain-error-to-status mapping are internal because
     nothing outside this assembly should call them. They are also the two pieces of the web
     layer with real branching logic, so they are worth testing directly rather than inferring

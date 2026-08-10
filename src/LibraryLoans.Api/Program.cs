@@ -6,8 +6,8 @@ using LibraryLoans.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Structured logs from the first commit: JSON lines on stdout, which is what a container
-// platform collects. Correlation scopes are layered on in P4 without changing this.
+// JSON lines on stdout, which is what a container platform collects. Scopes are enabled, so a
+// correlation enricher can be added later without changing how anything is written.
 builder.Logging.ClearProviders();
 builder.Logging.AddJsonConsole(options =>
 {
@@ -21,6 +21,11 @@ builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 builder.Services.AddHealthChecks();
+
+// Describes the API without a UI package. The endpoints carry WithName and WithSummary, and the
+// TypedResults return types give the generator its status codes and schemas for free — which is
+// a side benefit of returning Results<T, ...> rather than IResult.
+builder.Services.AddOpenApi();
 
 // Injected everywhere a current time is needed, so "is this loan overdue" is a test with a
 // fake clock rather than one that waits for the wall clock to cooperate. First-party since
@@ -48,12 +53,17 @@ if (app.Configuration.GetValue<bool>("MIGRATE_ON_STARTUP"))
 
 // Liveness deliberately touches no dependency. If the database is briefly unreachable the
 // process is still alive and should not be killed and restarted by the orchestrator — that is
-// what the readiness probe is for, added in P4.
+// what a readiness probe is for, and the two must not be conflated.
 app.MapHealthChecks("/health/live");
 
-// One versioned group that every feature hangs off. Established now rather than retrofitted:
-// in P4 the default-deny authorization policy attaches to this single group instead of to
-// every endpoint individually.
+// Served at /openapi/v1.json. Deliberately no Swagger UI: that would mean a third-party package
+// for a browser convenience, and the document is what tooling actually consumes.
+app.MapOpenApi();
+
+// One versioned group that every feature hangs off. Established up front rather than
+// retrofitted: a cross-cutting concern such as an authorization policy then attaches to this
+// single group in one line, instead of to every endpoint individually where one omission is a
+// hole nobody notices.
 var api = app.MapGroup("/api/v1");
 api.MapBooks();
 

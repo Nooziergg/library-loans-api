@@ -20,6 +20,19 @@
       which is exactly the kind of quiet gap this project is meant not to have.
     -->
     <MSBuildTreatWarningsAsErrors>true</MSBuildTreatWarningsAsErrors>
+
+    <!--
+      Fail the build on any package with a known vulnerability, direct or transitive.
+
+      NuGet audit reports these as NU1901-NU1904 warnings, which the setting above turns into
+      errors. Auditing transitively as well as directly is the part that matters: a vulnerability
+      is far more likely to arrive through a dependency you never chose than through one you did,
+      and combined with central package management a transitive can be pinned up to a patched
+      version without waiting for its parent to move.
+    -->
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>low</NuGetAuditLevel>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>

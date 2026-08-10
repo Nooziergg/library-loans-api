@@ -19,6 +19,7 @@
 
   <!-- Runtime -->
   <ItemGroup>
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.10" />
@@ -26,6 +27,27 @@
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
     <PackageVersion Include="Npgsql" Version="10.0.3" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+  </ItemGroup>
+
+  <!--
+    Transitive, pinned deliberately rather than accepted as resolved.
+
+    Microsoft.AspNetCore.OpenApi 10.0.x depends on Microsoft.OpenApi 2.0.0, which is affected by
+    CVE-2026-49451: an OpenAPI document containing a circular schema reference sends the parser
+    into unbounded recursion and terminates the process. A StackOverflowException cannot be
+    caught, so there is no defending against it at runtime. It is fixed in 2.7.5, and the parent
+    package has not moved.
+
+    Because CentralPackageTransitivePinningEnabled is on, naming a version here raises the
+    transitive to it without needing a PackageReference in any project — which is precisely the
+    situation that feature exists for. Kept on the 2.x line so the parent's expectations hold.
+
+    This project does not parse untrusted OpenAPI documents, so the practical exposure is close
+    to nil; it is pinned anyway, because "we were not reachable by that one" is a worse answer to
+    an auditor than "we patched it".
+  -->
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.OpenApi" Version="2.11.0" />
   </ItemGroup>
 
   <!-- Test-only. None of these ship in the container image. -->
