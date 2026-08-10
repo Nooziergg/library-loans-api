@@ -24,5 +24,9 @@ internal sealed class MemberRepository(LibraryDbContext dbContext) : IMemberRepo
             .AsNoTracking()
             .FirstOrDefaultAsync(member => member.Id == id, cancellationToken);
 
+    /// <summary>Tracked, because the caller is about to change what it loaded.</summary>
+    public Task<Member?> FindForUpdateAsync(Guid id, CancellationToken cancellationToken) =>
+        dbContext.Members.FirstOrDefaultAsync(member => member.Id == id, cancellationToken);
+
     public void Add(Member member) => dbContext.Members.Add(member);
 }

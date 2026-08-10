@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using LibraryLoans.Api.Http;
+using LibraryLoans.Application.Common;
 using LibraryLoans.Application.Loans;
 using Microsoft.AspNetCore.Http.HttpResults;
 
@@ -53,6 +54,13 @@ internal static class LoansEndpoints
             .WithName("ReturnLoan")
             .WithSummary("Records a borrowed copy coming back.");
 
+        loans.MapGet("/", SearchAsync)
+            // An unknown memberId yields an empty page rather than a 404: this is a filter over a
+            // collection that exists either way, not a subresource.
+            .AddEndpointFilter<ValidationFilter<LoanSearchRequest>>()
+            .WithName("SearchLoans")
+            .WithSummary("Lists loans, filtered by member, active state or overdue.");
+
         loans.MapGet("/{id:guid}", GetByIdAsync)
             // Reading a loan needs only an authenticated caller, which the group-level default-deny
             // policy would supply. Stated so the absence of a line here reads as a decision.
@@ -80,6 +88,18 @@ internal static class LoansEndpoints
         CancellationToken cancellationToken)
     {
         var result = await handler.HandleAsync(id, cancellationToken);
+
+        return result.IsSuccess
+            ? TypedResults.Ok(result.Value)
+            : DomainErrorToHttp.ToProblem(result.Error);
+    }
+
+    private static async Task<Results<Ok<PagedResponse<LoanResponse>>, ProblemHttpResult>> SearchAsync(
+        [AsParameters] LoanSearchRequest request,
+        SearchLoansHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(request.ToQuery(), cancellationToken);
 
         return result.IsSuccess
             ? TypedResults.Ok(result.Value)

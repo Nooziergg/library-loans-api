@@ -12,5 +12,12 @@ public interface IMemberRepository
     /// </summary>
     Task<Member?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Loads a member in order to change them — tracked, unlike <see cref="GetByIdAsync"/>. Named
+    /// for it, as <c>ILoanRepository.FindForUpdateAsync</c> is, because an untracked entity here
+    /// would mutate in memory and save nothing.
+    /// </summary>
+    Task<Member?> FindForUpdateAsync(Guid id, CancellationToken cancellationToken);
+
     void Add(Member member);
 }

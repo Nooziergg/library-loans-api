@@ -21,6 +21,9 @@ working API:
 - **Catalogue search and filtering** — `GET /api/v1/books` with `search` over title, author and
   ISBN, an `availableOnly` filter, paging with a capped page size, and sorting restricted to a
   published allowlist
+- **Loan and member registers** — `GET /api/v1/loans` filtered by borrower, active state and
+  overdue; `GET /api/v1/members` filtered by status; `GET /api/v1/members/{id}`;
+  `GET /api/v1/books/{bookId}/copies`; and `POST /api/v1/members/{id}/suspend`
 - The `Isbn` value object, checksum-validated and canonicalised so one book has one
   representation
 - RFC 7807 for every failure; exception messages never reach a client
@@ -28,7 +31,7 @@ working API:
 - An OpenAPI document at `/openapi/v1.json`
 - **Seed data — 330 rows out of the box**: 60 real titles, 150 physical copies, 40 borrowers and
   80 loans, arranged so the rules are visible rather than described
-- 143 unit tests and 59 integration tests, the latter against a disposable PostgreSQL that
+- 143 unit tests and 76 integration tests, the latter against a disposable PostgreSQL that
   Testcontainers creates and destroys per run
 
 ### The rules, and where each is enforced
@@ -50,7 +53,7 @@ working API:
 - Renewing a loan, retiring a copy, and reinstating a suspended member — each is a state
   transition whose guarding rule is deferred with it, on the principle that a guard whose
   precondition cannot be reached is a guard that cannot be tested
-- Update and delete on books; collection reads for members, copies and loans
+- Update and delete on books — the U and D of CRUD. Everything else the brief names is present
 - **Authentication and authorization — deliberately.** Every endpoint is anonymous. The brief
   does not ask for auth, and the budget went to the domain invariants it does ask for. The
   decision, the intended design (an external OIDC provider, default-deny, and why role rules and

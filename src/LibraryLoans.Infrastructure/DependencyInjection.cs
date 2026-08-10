@@ -58,6 +58,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IMemberRepository, MemberRepository>();
         services.AddScoped<ILoanRepository, LoanRepository>();
         services.AddScoped<ILoanQueries, LoanQueries>();
+        services.AddScoped<IMemberQueries, MemberQueries>();
+        services.AddScoped<IBookCopyQueries, BookCopyQueries>();
 
         return services;
     }

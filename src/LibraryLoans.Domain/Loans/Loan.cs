@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using LibraryLoans.Domain.Common;
 using LibraryLoans.Domain.Copies;
 using LibraryLoans.Domain.Members;
@@ -49,6 +50,26 @@ public sealed class Loan
     /// column already settles, and the two could disagree.
     /// </summary>
     public bool IsActive => ReturnedAt is null;
+
+    /// <summary>
+    /// Whether a loan is overdue at a given instant: still out, and past its due date.
+    ///
+    /// Expressed as an expression rather than a method, and that is the whole point. A method body
+    /// cannot be translated into SQL, so a query filtering on "overdue" would have to restate
+    /// <c>ReturnedAt == null &amp;&amp; DueAt &lt; now</c> in its <c>Where</c> clause — the same rule
+    /// written twice, in two languages, drifting the day one of them changes. Handing the database
+    /// this expression means the rule is defined once, here, in the aggregate that owns it.
+    ///
+    /// <paramref name="now"/> is a parameter rather than a captured constant so the provider renders
+    /// it as a query parameter. Baking the instant into the tree would produce a different SQL
+    /// string on every request and a new entry in the query cache each time — unbounded growth
+    /// driven by the clock.
+    ///
+    /// Overdue remains derived, never stored: a column would be wrong for the whole interval
+    /// between a loan falling due and whatever job got round to updating it.
+    /// </summary>
+    public static Expression<Func<Loan, bool>> OverdueAt(DateTimeOffset now) =>
+        loan => loan.ReturnedAt == null && loan.DueAt < now;
 
     /// <summary>
     /// Opens a loan. The only way a Loan comes into existence, so every rule about whether

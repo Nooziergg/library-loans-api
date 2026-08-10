@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using LibraryLoans.Api.Http;
+using LibraryLoans.Application.Common;
 using LibraryLoans.Application.Members;
 using LibraryLoans.Domain.Members;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -38,6 +39,21 @@ internal static class MembersEndpoints
     {
         var members = api.MapGroup("/members").WithTags("Members");
 
+        members.MapGet("/", SearchAsync)
+            .AddEndpointFilter<ValidationFilter<MemberSearchRequest>>()
+            .WithName("SearchMembers")
+            .WithSummary("Lists borrowers, optionally filtered by status.");
+
+        members.MapGet("/{id:guid}", GetByIdAsync)
+            .WithName("GetMemberById")
+            .WithSummary("Fetches a single borrower.");
+
+        members.MapPost("/{id:guid}/suspend", SuspendAsync)
+            // .RequireAuthorization("RequireLibrarian")
+            //   Suspending a borrower is a staff action. Not implemented — docs/AUTHORIZATION.md.
+            .WithName("SuspendMember")
+            .WithSummary("Suspends a borrower, blocking new loans.");
+
         members.MapPost("/", RegisterAsync)
             // .RequireAuthorization("RequireLibrarian")
             //   Registering a borrower is a staff operation. Authorization is not implemented —
@@ -47,6 +63,42 @@ internal static class MembersEndpoints
             .WithSummary("Registers a borrower.");
 
         return api;
+    }
+
+    private static async Task<Results<Ok<PagedResponse<MemberResponse>>, ProblemHttpResult>> SearchAsync(
+        [AsParameters] MemberSearchRequest request,
+        SearchMembersHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(request.ToQuery(), cancellationToken);
+
+        return result.IsSuccess
+            ? TypedResults.Ok(result.Value)
+            : DomainErrorToHttp.ToProblem(result.Error);
+    }
+
+    private static async Task<Results<Ok<MemberResponse>, ProblemHttpResult>> GetByIdAsync(
+        Guid id,
+        GetMemberByIdHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(id, cancellationToken);
+
+        return result.IsSuccess
+            ? TypedResults.Ok(result.Value)
+            : DomainErrorToHttp.ToProblem(result.Error);
+    }
+
+    private static async Task<Results<Ok<MemberResponse>, ProblemHttpResult>> SuspendAsync(
+        Guid id,
+        SuspendMemberHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(id, cancellationToken);
+
+        return result.IsSuccess
+            ? TypedResults.Ok(result.Value)
+            : DomainErrorToHttp.ToProblem(result.Error);
     }
 
     private static async Task<Results<Created<MemberResponse>, ProblemHttpResult>> RegisterAsync(

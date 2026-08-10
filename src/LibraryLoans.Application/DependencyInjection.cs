@@ -22,10 +22,15 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetBookByIdHandler>();
         services.AddScoped<SearchBooksHandler>();
         services.AddScoped<RegisterMemberHandler>();
+        services.AddScoped<GetMemberByIdHandler>();
+        services.AddScoped<SearchMembersHandler>();
+        services.AddScoped<SuspendMemberHandler>();
         services.AddScoped<AddBookCopyHandler>();
+        services.AddScoped<ListCopiesOfBookHandler>();
         services.AddScoped<BorrowCopyHandler>();
         services.AddScoped<ReturnLoanHandler>();
         services.AddScoped<GetLoanByIdHandler>();
+        services.AddScoped<SearchLoansHandler>();
 
         return services;
     }
