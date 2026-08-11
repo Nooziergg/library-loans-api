@@ -8,12 +8,14 @@ using LibraryLoans.Application.Abstractions;
 using LibraryLoans.Infrastructure;
 using LibraryLoans.Infrastructure.Persistence;
 using LibraryLoans.Infrastructure.Persistence.Seeding;
+using Microsoft.AspNetCore.HttpLogging;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // JSON lines on stdout, which is what a container platform collects. Scopes are enabled because
-// RequestLoggingMiddleware carries the correlation identifier in one — without this the scope is
-// opened, costs an allocation, and is written nowhere.
+// they are where the per-request identifiers live — TraceId and RequestId from the framework,
+// CorrelationId from CorrelationMiddleware when a caller supplied one. Without this they are
+// collected and written nowhere.
 builder.Logging.ClearProviders();
 builder.Logging.AddJsonConsole(options =>
 {
@@ -21,12 +23,33 @@ builder.Logging.AddJsonConsole(options =>
     options.UseUtcTimestamp = true;
 });
 
+// One line per request — method, path, status, duration — from the framework rather than from a
+// middleware written here. CombineLogs is what makes it one entry instead of the two ("request
+// starting" / "request finished") that HttpLogging emits by default.
+//
+// The field list is the whole payload, and what is absent is a decision: RequestQuery is not
+// enabled. A query string is the part of a URL a caller fills in, and on an API that grows it is
+// where a search term or an email address first turns up in a log nobody meant to hold one. Headers
+// and bodies are likewise off — this is a summary line, not a capture.
+builder.Services.AddHttpLogging(options =>
+{
+    options.LoggingFields = HttpLoggingFields.RequestMethod
+        | HttpLoggingFields.RequestPath
+        | HttpLoggingFields.ResponseStatusCode
+        | HttpLoggingFields.Duration;
+
+    options.CombineLogs = true;
+});
+
+// Per-request decisions about that line. Today: liveness probes are not logged.
+builder.Services.AddHttpLoggingInterceptor<HealthProbeLoggingInterceptor>();
+
 // RFC 7807 for every failure, including ones nobody anticipated. The handler deliberately
 // reveals nothing about the exception it caught — see GlobalExceptionHandler.
 builder.Services.AddProblemDetails(options =>
     // The one piece of correlation a client can act on. A caller reporting a failure quotes this,
     // and it is the same string the response header carried and every log line for that request was
-    // written under, so the report resolves to a grep. RequestLoggingMiddleware puts it on
+    // written under, so the report resolves to a grep. CorrelationMiddleware puts it on
     // TraceIdentifier; the built-in traceId stays as the trace's own id, because they answer
     // different questions and collapsing them would lose the one that spans services.
     options.CustomizeProblemDetails = context =>
@@ -111,14 +134,17 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
-// First, and the order relative to the exception handler is the whole point rather than a
-// preference. Outermost means the status code this line reports is the one the client actually
-// received — including the 500 or the 400 that UseExceptionHandler substitutes on the way out.
-// Registered the other way round, every failed request would be logged as whatever the status was
-// before the handler ran, which is the one case where an accurate log matters most. It also puts
-// the correlation scope around the exception handler, so the line recording a fault and the line
-// summarising the request that caused it share an identifier.
-app.UseMiddleware<RequestLoggingMiddleware>();
+// Outermost, so the correlation scope encloses everything that logs — including the exception
+// handler, which means the line recording a fault and the line summarising the request that caused
+// it carry the same identifier.
+app.UseMiddleware<CorrelationMiddleware>();
+
+// Then the request line, and its position relative to the exception handler is the point rather
+// than a preference. Outside it means the status this line reports is the one the client actually
+// received, including a 500 or 400 that UseExceptionHandler substituted on the way out. The other
+// way round, every failed request would be logged with whatever the status was before the handler
+// ran — the one case where an accurate log matters most.
+app.UseHttpLogging();
 
 // Outside the exception handler, which is a correction worth recording rather than quietly
 // swapping: this was registered inside it first, and the ordering was wrong in a way that a passing

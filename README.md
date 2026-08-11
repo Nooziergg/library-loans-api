@@ -35,16 +35,17 @@ working API:
 - RFC 7807 for every failure; exception messages never reach a client
 - EF Core on PostgreSQL, migrations committed and applied on startup
 - An OpenAPI document at `/openapi/v1.json`
-- **Structured logs** — JSON on stdout, one line per request with method, path, status and elapsed
-  time, and a correlation identifier returned in `X-Correlation-Id` and carried by every line
-  written while handling that request
+- **Structured logs** — JSON on stdout; one entry per request with method, path, status and duration
+  via the framework's `UseHttpLogging`, and an identifier returned in `X-Correlation-Id` that also
+  appears in every error body. Every line already carries the framework's `TraceId` and `RequestId`;
+  a caller who supplies their own label gets that on the request's lines too
 - **An audit trail** — every insert, update and delete recorded with the actor, the correlation id
   and the before/after values, written inside the same transaction as the change it describes
 - **Idempotent retries** — `POST` accepts an `Idempotency-Key`, and a repeat of the same request
   replays the original response instead of doing the work twice
 - **Seed data — 330 rows out of the box**: 60 real titles, 150 physical copies, 40 borrowers and
   80 loans, arranged so the rules are visible rather than described
-- 187 unit tests and 120 integration tests, the latter against a disposable PostgreSQL that
+- 183 unit tests and 120 integration tests, the latter against a disposable PostgreSQL that
   Testcontainers creates and destroys per run
 
 ### The rules, and where each is enforced
@@ -218,22 +219,35 @@ docker compose logs -f api
 ```
 
 ```json
-{"LogLevel":"Information","Category":"LibraryLoans.Api.Http.RequestLoggingMiddleware",
- "Message":"GET /api/v1/books/00000000-0000-0000-0000-000000000000 responded 404 in 42.1 ms",
- "State":{"RequestMethod":"GET","RequestPath":"/api/v1/books/0000…","StatusCode":404,
-          "ElapsedMilliseconds":42.1},
- "Scopes":[…,{"CorrelationId":"panel-demo-3"}]}
+{"LogLevel":"Information","Category":"Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware",
+ "State":{"Method":"GET","Path":"/api/v1/books/0000…","StatusCode":404,"Duration":144.97},
+ "Scopes":[{"TraceId":"04d4c083…","SpanId":"83e1ac46…"},
+           {"RequestId":"0HNNNT268QFE5:00000001"},
+           {"CorrelationId":"wheel-check-1"}]}
 ```
 
-*Abridged and wrapped for reading — the real line is one row, and also carries the framework's
-connection and trace scopes.*
+*Abridged and wrapped for reading — the real entry is one row.*
 
-**One line per request, not three.** The framework's own request logging is turned down in
-`appsettings.json` and this replaces it rather than being suppressed alongside it — which is the
-version of that decision worth catching, because a service that logs nothing per request looks fine
-until an incident. EF Core's per-statement SQL logging is turned down for the same reason: it
-restated every request two or three times, and at volume it is the largest single item in a log bill.
-Both are one line to reverse while diagnosing, and the comments say so where they live.
+**The request line is the framework's, not a middleware written here.** `UseHttpLogging` with
+`CombineLogs = true` produces exactly one entry per request carrying method, path, status and
+duration, and `IHttpLoggingInterceptor` handles the per-request decisions — today, keeping liveness
+probes out of the stream so an orchestrator polling forever does not scroll away the request you are
+reading. This replaced a hand-written middleware that did the same job in about a hundred and thirty
+lines: the framework has shipped this since .NET 8, and re-implementing it was the wrong call.
+
+What *is* configured here is the field list, and what is absent from it is the decision:
+`RequestQuery` is not enabled. The query string is the part of a URL a caller fills in, and on an API
+that grows it is where a search term or an email address first turns up in a log nobody meant to hold
+one. Headers and bodies are off for the same reason — this is a summary line, not a capture. No
+names, emails or membership numbers are logged anywhere; identifiers only.
+
+**The one subtlety worth knowing:** `Microsoft.AspNetCore` is turned down to `Warning` in
+`appsettings.json` to silence the hosting layer's two-lines-per-request chatter, and HttpLogging's
+category sits *underneath* that prefix. So `Microsoft.AspNetCore.HttpLogging` is explicitly exempted
+one line below. Delete that exemption and the service logs nothing per request while looking
+perfectly healthy — which is not hypothetical, it is how this service actually ran until somebody
+went looking. EF Core's per-statement SQL logging is turned down on the same reasoning, and both are
+one line to reverse while diagnosing.
 
 **The correlation identifier is one string in three places** — the `X-Correlation-Id` response
 header, the `correlationId` field of any RFC 7807 error body, and every log line written while
@@ -245,17 +259,25 @@ curl -s -H 'X-Correlation-Id: panel-demo-3' \
 docker compose logs api | grep panel-demo-3
 ```
 
-An identifier the caller supplies is honoured, so it survives a service boundary — but only after it
-is checked: bounded to 64 characters from a restricted alphabet, and refused outright if the header
-appears twice. It is attacker-controlled text on its way into our records, and a caller should not get
-to choose which of two identifiers the logs believe. When nothing usable arrives, the ambient W3C
-trace id is used, so the identifier agrees with the `TraceId` the framework already stamps on every
-line instead of sitting beside it as a second answer to the same question.
+An identifier the caller supplies is honoured — but only after it is checked: bounded to 64
+characters from a restricted alphabet, and refused if the header appears twice. It is
+attacker-controlled text on its way into our records and back out in our response, and a caller
+should not get to choose which of two identifiers the logs believe. A value that fails the check is
+replaced rather than rejected, because failing a request over a logging convenience turns a
+convenience into a new way to fail.
 
-**What is deliberately absent:** the query string, which is the part of a URL a caller fills in and
-the first place something sensitive turns up in a log nobody meant to hold it. No names, emails or
-membership numbers are logged anywhere — identifiers only. And health probes are logged at Debug, so
-an orchestrator polling liveness forever does not scroll away the request you are reading.
+**`CorrelationMiddleware` is about forty lines, and the reason it is not larger is worth saying,
+because the usual version of this class is mostly redundant.** ASP.NET Core already puts `TraceId`,
+`SpanId`, `ConnectionId` and `RequestId` on every log line; `AddProblemDetails` already writes a
+`traceId` into every error body; and an inbound **`traceparent`** header is already parsed and
+adopted, so an identifier already survives a service hop with no code at all. Two things genuinely
+are missing, and they are all this class does: nothing hands an identifier *back* to the caller, and
+`traceparent` is a 55-character machine format with nowhere to put a human label like a batch name or
+a ticket number.
+
+That is also why the `CorrelationId` scope above appears only when a caller supplied one. With no
+header, the value is the trace id — already on the line as `TraceId` — and repeating it under a
+second name would make the log wider without making it say more.
 
 ### The audit trail
 

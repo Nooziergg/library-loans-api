@@ -38,7 +38,7 @@ internal sealed class HttpAuditContext(IHttpContextAccessor httpContextAccessor)
 
     /// <summary>
     /// The same string the response header carries, the same one in any RFC 7807 body, and the same
-    /// one on every log line for this request — <c>RequestLoggingMiddleware</c> assigns it to
+    /// one on every log line for this request — <c>CorrelationMiddleware</c> assigns it to
     /// <c>TraceIdentifier</c>. That is what lets an audit row and the log of the request that wrote
     /// it be joined by a single grep, which is most of the value of recording it here at all.
     /// </summary>
