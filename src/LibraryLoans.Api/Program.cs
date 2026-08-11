@@ -10,8 +10,9 @@ using LibraryLoans.Infrastructure.Persistence.Seeding;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// JSON lines on stdout, which is what a container platform collects. Scopes are enabled, so a
-// correlation enricher can be added later without changing how anything is written.
+// JSON lines on stdout, which is what a container platform collects. Scopes are enabled because
+// RequestLoggingMiddleware carries the correlation identifier in one — without this the scope is
+// opened, costs an allocation, and is written nowhere.
 builder.Logging.ClearProviders();
 builder.Logging.AddJsonConsole(options =>
 {
@@ -21,7 +22,14 @@ builder.Logging.AddJsonConsole(options =>
 
 // RFC 7807 for every failure, including ones nobody anticipated. The handler deliberately
 // reveals nothing about the exception it caught — see GlobalExceptionHandler.
-builder.Services.AddProblemDetails();
+builder.Services.AddProblemDetails(options =>
+    // The one piece of correlation a client can act on. A caller reporting a failure quotes this,
+    // and it is the same string the response header carried and every log line for that request was
+    // written under, so the report resolves to a grep. RequestLoggingMiddleware puts it on
+    // TraceIdentifier; the built-in traceId stays as the trace's own id, because they answer
+    // different questions and collapsing them would lose the one that spans services.
+    options.CustomizeProblemDetails = context =>
+        context.ProblemDetails.Extensions["correlationId"] = context.HttpContext.TraceIdentifier);
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 builder.Services.AddHealthChecks();
@@ -95,8 +103,17 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
-// First in the pipeline, so anything thrown downstream becomes a ProblemDetails rather than
-// reaching the framework's developer error page.
+// First, and the order relative to the exception handler is the whole point rather than a
+// preference. Outermost means the status code this line reports is the one the client actually
+// received — including the 500 or the 400 that UseExceptionHandler substitutes on the way out.
+// Registered the other way round, every failed request would be logged as whatever the status was
+// before the handler ran, which is the one case where an accurate log matters most. It also puts
+// the correlation scope around the exception handler, so the line recording a fault and the line
+// summarising the request that caused it share an identifier.
+app.UseMiddleware<RequestLoggingMiddleware>();
+
+// Anything thrown downstream becomes a ProblemDetails rather than reaching the framework's
+// developer error page.
 app.UseExceptionHandler();
 
 // Off unless explicitly enabled; compose turns it on. See DatabaseMigrator for why production

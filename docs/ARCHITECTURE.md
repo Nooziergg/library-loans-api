@@ -318,6 +318,27 @@ returning all four facts, which would mean `Loan.Open` taking loose scalars inst
 aggregates whose rules it applies — moving the rules out of the objects that own them to save three
 round trips. At a library's request rate that trade is clear; at a different rate it would not be.
 
+**How you would know the accepted race had fired.** The five-loan limit is enforced once, so two
+concurrent borrows can both see four and leave a member holding six. Accepting a race creates a debt
+to detect it, and the log is the wrong instrument: neither request is wrong, each is a 201 under its
+own correlation identifier, and nothing in either line is anomalous. The state is what is wrong, so
+the check is a query over state:
+
+```sql
+SELECT member_id, count(*) AS active
+FROM loans
+WHERE returned_at IS NULL
+GROUP BY member_id
+HAVING count(*) > 5;
+```
+
+Run on a schedule, an empty result is the evidence the race has not fired, and a row is a librarian's
+five-minute correction rather than an incident — which is the asymmetry that made the trade worth
+taking. This is the honest shape of the answer: a constraint prevents, a reconciliation detects, and
+choosing detection means committing to run it. The same query is the alert if the trade is ever
+revisited, and it is why the limit lives in `LoanPolicy` as a named constant rather than a literal —
+the rule and the query that audits it must not be able to disagree.
+
 ## 6. Cross-cutting concerns
 
 | Concern | Mechanism | State |
@@ -330,8 +351,8 @@ round trips. At a library's request rate that trade is clear; at a different rat
 | Resilience | `EnableRetryOnFailure` on the Npgsql connection | **BUILT** |
 | Health | `/health/live` — process liveness, touching no dependency | **BUILT** |
 | Health | `/health/ready` — readiness with a database probe | not built |
-| Request logging | one enriched line per request: method, path, status, elapsed | not built |
-| Correlation | middleware generating and echoing `X-Correlation-Id`, pushed as a log scope so every line in a request carries it | not built |
+| Request logging | `RequestLoggingMiddleware` — one line per request: method, path, status, elapsed. Registered outermost, so the status it reports is the one the client received, including a code the exception handler substituted on the way out. Health probes at Debug; a 5xx summarised at Warning because the exception handler already logged it once at Error, and two lines per fault double every error-count alert | **BUILT** |
+| Correlation | the same middleware honours or mints `X-Correlation-Id`, pushes it as a log scope, echoes it in the response, and puts it on `TraceIdentifier` — which is where `CustomizeProblemDetails` reads the `correlationId` returned in every RFC 7807 body. One string in the header, the error body, and every line of that request. An inbound value is bounded to 64 characters from a restricted alphabet and refused if the header repeats; failing that check replaces it rather than failing the request | **BUILT** |
 | AuthN/AuthZ | JWT bearer against an external OIDC provider, `FallbackPolicy = RequireAuthenticatedUser` — default-deny, so a forgotten attribute causes a 401 rather than a silent hole. Design and seams in [AUTHORIZATION.md](AUTHORIZATION.md) | **not built, by decision** |
 | Rate limiting | fixed window on write endpoints | not built |
 
@@ -339,6 +360,14 @@ The logging rows deserve one clarification, since a reader may expect a named li
 goes through `ILogger` and writes JSON to stdout via the built-in console formatter. That is
 deliberately a swap and not a rewrite — replacing the sink changes composition-root wiring and
 nothing else, which is exactly why no logging library is load-bearing here.
+
+Two categories are turned down in `appsettings.json` rather than left at their defaults, and both are
+decisions with a comment where they live. `Microsoft.AspNetCore` writes two lines per request plus
+routing chatter, which the middleware above replaces — turning it down and building nothing in its
+place is precisely the failure this pair exists to avoid. `Microsoft.EntityFrameworkCore.Database.Command`
+logs the text of every statement at Information: parameter values are already redacted, since
+`EnableSensitiveDataLogging` is off, but it restated each request two or three more times and at
+volume it is the largest single item in a log bill. Either is one line to reverse while diagnosing.
 
 `TimeProvider` deserves the callout: it makes "is this loan overdue" a deterministic unit
 test instead of a `Thread.Sleep`, and it is first-party since .NET 8.
@@ -353,6 +382,11 @@ exactly what an investigation needs. Names, email addresses and membership numbe
 
 Written down before there is a `Member` type to break it, because the alternative is discovering
 an email address in a log field during a review and retrofitting the rule across every handler.
+
+The request line follows the same rule, which is why it logs the path and not the query string. The
+path is ours — a route and an identifier. The query string is whatever a caller put there, and on an
+API that grows it is the first place a search term or an email address arrives in a log nobody meant
+to hold one. The correlation identifier is how a line joins back to its request, so nothing is lost.
 
 ## 7. Reading order for a reviewer
 

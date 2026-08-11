@@ -268,7 +268,10 @@ public static class DatabaseSeeder
             Open(returnedCandidates[index], memberIndex, now.AddDays(-60 + index), returnIt: true);
         }
 
-        // The rest: ordinary loans in progress, spread thinly so nobody but member 0 is near the cap.
+        // The rest: ordinary loans in progress, handed to the first borrower still below the cap. That
+        // fills the early members one at a time rather than spreading evenly — which is fine, and
+        // worth saying plainly: they stop one short of the limit, so member 0 remains the only one
+        // demonstrating what being at the limit looks like.
         foreach (var copy in allCopies.Where(copy => !copyIsOut.Contains(copy.Id)))
         {
             if (loans.Count >= 80)

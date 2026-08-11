@@ -31,9 +31,12 @@ working API:
 - RFC 7807 for every failure; exception messages never reach a client
 - EF Core on PostgreSQL, migrations committed and applied on startup
 - An OpenAPI document at `/openapi/v1.json`
+- **Structured logs** — JSON on stdout, one line per request with method, path, status and elapsed
+  time, and a correlation identifier returned in `X-Correlation-Id` and carried by every line
+  written while handling that request
 - **Seed data — 330 rows out of the box**: 60 real titles, 150 physical copies, 40 borrowers and
   80 loans, arranged so the rules are visible rather than described
-- 143 unit tests and 84 integration tests, the latter against a disposable PostgreSQL that
+- 187 unit tests and 103 integration tests, the latter against a disposable PostgreSQL that
   Testcontainers creates and destroys per run
 
 ### The rules, and where each is enforced
@@ -55,6 +58,13 @@ working API:
 - Renewing a loan, retiring a copy, and reinstating a suspended member — each is a state
   transition whose guarding rule is deferred with it, on the principle that a guard whose
   precondition cannot be reached is a guard that cannot be tested
+- **Update and delete on members and copies.** The catalogue carries the full set because that is
+  where the interesting rule lives: `DELETE /books/{id}` refuses to erase lending history, with two
+  different refusals depending on whether that history is still open. The same verbs elsewhere split
+  into two halves and neither earns the space — editing a member's name or email is the same shape a
+  third time with no new rule to show, and *removing* a member or a copy is not a delete at all but
+  the retirement and deactivation transitions above. A reviewer counting endpoints will see the gap;
+  it is what a fixed budget bought, not something overlooked
 - **Authentication and authorization — deliberately.** Every endpoint is anonymous. The brief
   does not ask for auth, and the budget went to the domain invariants it does ask for. The
   decision, the intended design (an external OIDC provider, default-deny, and why role rules and
@@ -114,8 +124,10 @@ curl -s "localhost:8080/api/v1/books?search=Hobbit&availableOnly=true"  # not av
 is parsed by the same value object the catalogue is stored with:
 
 ```bash
-curl -s "localhost:8080/api/v1/books?search=9781000000009"
-curl -s "localhost:8080/api/v1/books?search=978-1-00000-000-9"
+curl -s "localhost:8080/api/v1/books?search=9781000000009"      # ISBN-13
+curl -s "localhost:8080/api/v1/books?search=978-1-00000-000-9"  # the same, hyphenated
+curl -s "localhost:8080/api/v1/books?search=1000000001"         # its ISBN-10 encoding
+curl -s "localhost:8080/api/v1/books?search=1-00000-000-1"      # and that, hyphenated
 ```
 
 **Invalid input is refused in two distinct voices** — 400 when the request cannot be understood,
@@ -184,6 +196,54 @@ To start over from an empty database:
 ```bash
 docker compose down -v && docker compose up
 ```
+
+### What a request looks like in the log
+
+Logs are JSON on stdout, which is what a container platform collects. Tail them and call anything:
+
+```bash
+docker compose logs -f api
+```
+
+```json
+{"LogLevel":"Information","Category":"LibraryLoans.Api.Http.RequestLoggingMiddleware",
+ "Message":"GET /api/v1/books/00000000-0000-0000-0000-000000000000 responded 404 in 42.1 ms",
+ "State":{"RequestMethod":"GET","RequestPath":"/api/v1/books/0000…","StatusCode":404,
+          "ElapsedMilliseconds":42.1},
+ "Scopes":[…,{"CorrelationId":"panel-demo-3"}]}
+```
+
+*Abridged and wrapped for reading — the real line is one row, and also carries the framework's
+connection and trace scopes.*
+
+**One line per request, not three.** The framework's own request logging is turned down in
+`appsettings.json` and this replaces it rather than being suppressed alongside it — which is the
+version of that decision worth catching, because a service that logs nothing per request looks fine
+until an incident. EF Core's per-statement SQL logging is turned down for the same reason: it
+restated every request two or three times, and at volume it is the largest single item in a log bill.
+Both are one line to reverse while diagnosing, and the comments say so where they live.
+
+**The correlation identifier is one string in three places** — the `X-Correlation-Id` response
+header, the `correlationId` field of any RFC 7807 error body, and every log line written while
+serving that request. So a caller reporting a failure hands you something you can grep:
+
+```bash
+curl -s -H 'X-Correlation-Id: panel-demo-3' \
+  localhost:8080/api/v1/books/00000000-0000-0000-0000-000000000000   # -> "correlationId":"panel-demo-3"
+docker compose logs api | grep panel-demo-3
+```
+
+An identifier the caller supplies is honoured, so it survives a service boundary — but only after it
+is checked: bounded to 64 characters from a restricted alphabet, and refused outright if the header
+appears twice. It is attacker-controlled text on its way into our records, and a caller should not get
+to choose which of two identifiers the logs believe. When nothing usable arrives, the ambient W3C
+trace id is used, so the identifier agrees with the `TraceId` the framework already stamps on every
+line instead of sitting beside it as a second answer to the same question.
+
+**What is deliberately absent:** the query string, which is the part of a URL a caller fills in and
+the first place something sensitive turns up in a log nobody meant to hold it. No names, emails or
+membership numbers are logged anywhere — identifiers only. And health probes are logged at Debug, so
+an orchestrator polling liveness forever does not scroll away the request you are reading.
 
 ## Running the tests
 
@@ -349,9 +409,12 @@ account the service itself does not have.
 **Authentication would be real**, via an external OIDC provider rather than anything built here. The
 design and the reasoning are in [docs/AUTHORIZATION.md](docs/AUTHORIZATION.md).
 
-**Observability would grow two things it does not have:** a correlation identifier threaded through
-every log line in a request, and distributed tracing. Logs are structured JSON on stdout today,
-which is the right foundation and the wrong stopping point once more than one service is involved.
+**Observability would grow distributed tracing.** One structured line per request, with an
+identifier that correlates every line in it and survives an upstream hop, is the whole mechanism a
+single service needs. Across several it is the wrong shape: `X-Correlation-Id` is a convention where
+`traceparent` is a standard, and spans record *where* the time went rather than only how much of it
+there was. `AddOpenTelemetry()` with the ASP.NET Core and Npgsql instrumentation is the change, and
+it would replace this middleware rather than sit beside it.
 
 **Deep pagination would move to cursors.** Offset paging is correct and cheap for the page sizes a
 catalogue UI asks for, and degrades badly at page 5,000 because the database still walks the rows it
