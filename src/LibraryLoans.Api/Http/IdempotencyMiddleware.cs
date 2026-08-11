@@ -4,6 +4,8 @@ using System.Text;
 using LibraryLoans.Application.Abstractions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.Primitives;
+using Microsoft.Net.Http.Headers;
 
 namespace LibraryLoans.Api.Http;
 
@@ -155,11 +157,34 @@ internal sealed class IdempotencyMiddleware(
         }
         catch
         {
-            // The exception handler sits outside this middleware and will turn this into a 500, so
-            // the key must not stay claimed — otherwise a transient fault would make every retry of
-            // this request answer "in progress" until the row expired.
+            // Only reached by something the exception handler itself could not deal with, since it
+            // runs inside this middleware. The key must still not stay claimed, or a fault would
+            // make every retry of this request answer "in progress" until the row expired.
             httpContext.Features.Set(originalBodyFeature);
-            await store.ReleaseAsync(key, CancellationToken.None);
+
+            // The release gets its own guard, and this is not defensive habit — it is the difference
+            // between reporting the fault that happened and reporting a different one. If the
+            // endpoint threw because the database went away, this release throws too, and an
+            // unguarded await here would replace the original exception with the second one. The
+            // sharp case is a client disconnect: the OperationCanceledException would be swapped for
+            // a database error, GlobalExceptionHandler would no longer recognise it as an abandoned
+            // request, and an ordinary disconnect would be logged as a server fault and counted in
+            // the error rate. That handler has twenty lines of comment explaining why that must not
+            // happen; this is where it would have happened anyway.
+            try
+            {
+                await store.ReleaseAsync(key, CancellationToken.None);
+            }
+            catch (Exception releaseFailure)
+            {
+                logger.LogWarning(
+                    releaseFailure,
+                    "Could not release idempotency key {IdempotencyKey} after a failed request. It "
+                    + "stays claimed until it expires, so a retry will be told the request is still "
+                    + "in progress",
+                    key);
+            }
+
             throw;
         }
 
@@ -180,11 +205,46 @@ internal sealed class IdempotencyMiddleware(
         {
             await store.CompleteAsync(
                 key,
-                new IdempotentResponse(statusCode, httpContext.Response.ContentType, body),
+                new IdempotentResponse(
+                    statusCode,
+                    httpContext.Response.ContentType,
+                    CaptureHeaders(httpContext.Response),
+                    body),
                 CancellationToken.None);
         }
 
         await originalBodyFeature.Stream.WriteAsync(body, cancellationToken);
+    }
+
+    /// <summary>
+    /// The headers a replay has to reproduce for the response to still mean what it meant.
+    ///
+    /// <c>Location</c> is the one that matters here — every creating endpoint returns
+    /// <c>CreatedAtRoute</c> — and the other two are included because they identify the
+    /// representation rather than the exchange. Everything else is deliberately not replayed: the
+    /// rest of a response describes <i>this</i> call, and reissuing a stale <c>Date</c> or somebody
+    /// else's <c>Set-Cookie</c> would be a bug with a much longer tail than a missing header.
+    /// </summary>
+    private static readonly string[] ReplayableHeaders =
+    [
+        HeaderNames.Location,
+        HeaderNames.ETag,
+        HeaderNames.ContentLanguage,
+    ];
+
+    private static Dictionary<string, string> CaptureHeaders(HttpResponse response)
+    {
+        var captured = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var name in ReplayableHeaders)
+        {
+            if (response.Headers.TryGetValue(name, out var value) && !StringValues.IsNullOrEmpty(value))
+            {
+                captured[name] = value.ToString();
+            }
+        }
+
+        return captured;
     }
 
     private static async Task ReplayAsync(
@@ -197,6 +257,12 @@ internal sealed class IdempotencyMiddleware(
         if (!string.IsNullOrEmpty(stored.ContentType))
         {
             httpContext.Response.ContentType = stored.ContentType;
+        }
+
+        // Before the replay marker, so a stored header can never overwrite it.
+        foreach (var (name, value) in stored.Headers)
+        {
+            httpContext.Response.Headers[name] = value;
         }
 
         httpContext.Response.Headers[ReplayedHeaderName] = "true";

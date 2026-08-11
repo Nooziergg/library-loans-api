@@ -18,7 +18,7 @@ internal sealed class MemberQueries(LibraryDbContext dbContext) : IMemberQueries
                 member.Status.ToString()))
             .FirstOrDefaultAsync(cancellationToken);
 
-    public async Task<PagedResponse<MemberResponse>> SearchAsync(
+    public async Task<PagedResponse<MemberSummaryResponse>> SearchAsync(
         MemberSearchQuery query,
         CancellationToken cancellationToken)
     {
@@ -40,14 +40,16 @@ internal sealed class MemberQueries(LibraryDbContext dbContext) : IMemberQueries
             .OrderBy(member => member.Id)
             .Skip((query.Page - 1) * query.PageSize)
             .Take(query.PageSize)
-            .Select(member => new MemberResponse(
+            // Name and Email are absent by design — see MemberSummaryResponse. Because this is a
+            // projection rather than a mapping in memory, they are not merely omitted from the JSON:
+            // the SELECT never asks for those columns, so the personal data does not leave
+            // PostgreSQL at all.
+            .Select(member => new MemberSummaryResponse(
                 member.Id,
                 member.MembershipNumber.Value,
-                member.Name,
-                member.Email,
                 member.Status.ToString()))
             .ToListAsync(cancellationToken);
 
-        return new PagedResponse<MemberResponse>(items, query.Page, query.PageSize, totalCount);
+        return new PagedResponse<MemberSummaryResponse>(items, query.Page, query.PageSize, totalCount);
     }
 }

@@ -16,5 +16,5 @@ public interface IMemberQueries
 {
     Task<MemberResponse?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
 
-    Task<PagedResponse<MemberResponse>> SearchAsync(MemberSearchQuery query, CancellationToken cancellationToken);
+    Task<PagedResponse<MemberSummaryResponse>> SearchAsync(MemberSearchQuery query, CancellationToken cancellationToken);
 }

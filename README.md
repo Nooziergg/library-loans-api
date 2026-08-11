@@ -23,7 +23,11 @@ working API:
   published allowlist
 - **Loan and member registers** — `GET /api/v1/loans` filtered by borrower, active state and
   overdue; `GET /api/v1/members` filtered by status; `GET /api/v1/members/{id}`;
-  `GET /api/v1/books/{bookId}/copies`; and `POST /api/v1/members/{id}/suspend`
+  `GET /api/v1/books/{bookId}/copies`; and `POST /api/v1/members/{id}/suspend`.
+  The member register deliberately returns **identifiers and status only, no names or email
+  addresses** — while authorization does not exist, a paged collection is bulk extraction of the
+  whole membership, and it is enumeration rather than secrecy that turns a missing auth layer into a
+  data breach. Reading one member by id needs a known GUID and keeps the full detail
 - **Full CRUD on the catalogue** — `PUT /api/v1/books/{id}` and `DELETE /api/v1/books/{id}`, the
   latter refusing to erase lending history
 - The `Isbn` value object, checksum-validated and canonicalised so one book has one
@@ -40,7 +44,7 @@ working API:
   replays the original response instead of doing the work twice
 - **Seed data — 330 rows out of the box**: 60 real titles, 150 physical copies, 40 borrowers and
   80 loans, arranged so the rules are visible rather than described
-- 187 unit tests and 118 integration tests, the latter against a disposable PostgreSQL that
+- 187 unit tests and 120 integration tests, the latter against a disposable PostgreSQL that
   Testcontainers creates and destroys per run
 
 ### The rules, and where each is enforced
@@ -271,9 +275,18 @@ docker compose exec db psql -U library -d library -c \
 design decision. "Every handler remembers to call the audit service" is a rule that holds until the
 fifteenth handler is written under pressure, and the gap it leaves is silent — nothing fails, a row
 simply has no history, and you find out during the incident that needed it. Hanging the trail off
-`SaveChanges` inverts that: a change cannot reach the database without passing through it, so a new
-aggregate is audited the day it is mapped and nobody has to remember anything. One registration, in
-`AddInfrastructure`; no handler opts in, no entity carries an attribute.
+`SaveChanges` inverts that: a change made through the change tracker cannot reach the database
+without passing through it, so a new aggregate is audited the day it is mapped and nobody has to
+remember anything. One registration, in `AddInfrastructure`; no handler opts in, no entity carries an
+attribute.
+
+The boundary is worth stating precisely, because "cannot reach the database" would be an
+overstatement and this repository contains the counterexample: SQL issued *around* the change
+tracker is not audited. `EfIdempotencyStore` does exactly that, deliberately — an idempotency key is
+transport plumbing, not a fact about the library. The risk is the same tool used carelessly.
+`ExecuteUpdateAsync` and `ExecuteDeleteAsync` are the natural choice for a bulk operation such as the
+retention job above, and a business change made with either would be unaudited with nothing to
+indicate it.
 
 **The rows are written inside the same transaction as the change they describe.** They are added to
 the same change tracker, so they are inserted by the same `SaveChanges` and commit or roll back
@@ -312,7 +325,14 @@ curl -si -X POST localhost:8080/api/v1/books \
 ```
 
 The first call returns `201`; the second returns the same `201`, the same body — the same id, which
-is the part that matters — and `Idempotency-Replayed: true`. Only one book exists.
+is the part that matters — the same `Location`, and `Idempotency-Replayed: true`. Only one book
+exists.
+
+`Location` is called out because getting it wrong is the easy mistake here: a replay that stores only
+the status and the body passes every obvious assertion and then hands a client `201 Created` with no
+indication of *what* was created, on precisely the retry path the feature exists to serve. An
+allowlist of headers is stored alongside the body — `Location`, `ETag`, `Content-Language` — and not
+the rest, because the others describe this exchange rather than the outcome.
 
 **The primary key of `idempotency_keys` is the mechanism.** Both copies of a concurrent retry try to
 insert the same key and PostgreSQL lets exactly one win, which is the same technique as the partial
@@ -328,6 +348,10 @@ Four decisions worth stating, because each is a place this could be wrong:
 - **A 4xx is stored and replayed; a 5xx releases the key.** A malformed request is malformed every
   time, so replaying that verdict is free and correct. A server fault is not an answer, and storing
   it would turn a momentary failure into a permanent one for the client best behaved enough to retry.
+  This is why the middleware sits *outside* the exception handler rather than inside it: a malformed
+  body throws during model binding, and from inside, that throw would unwind past the middleware and
+  the 400 produced afterwards would never be stored — so the rule would quietly not hold for the
+  commonest 4xx there is.
 - **A key reused for a *different* request is refused with 422**, following
   [draft-ietf-httpapi-idempotency-key-header](https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/),
   rather than being served the first response — which would silently discard the second request. The

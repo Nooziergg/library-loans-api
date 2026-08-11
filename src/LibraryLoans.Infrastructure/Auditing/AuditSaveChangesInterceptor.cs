@@ -13,9 +13,19 @@ namespace LibraryLoans.Infrastructure.Auditing;
 /// having if it is complete, and "every handler remembers to call the audit service" is a rule that
 /// holds until the fifteenth handler is written under deadline pressure. The gap it leaves is
 /// invisible — nothing fails, a row simply has no history — and it is discovered during the incident
-/// that needed it. Hanging the trail off <c>SaveChanges</c> inverts that: a change cannot reach the
-/// database without passing through here, so a new aggregate is audited on the day it is added and
-/// nobody has to remember anything.</para>
+/// that needed it. Hanging the trail off <c>SaveChanges</c> inverts that: a change made through the
+/// change tracker cannot reach the database without passing through here, so a new aggregate is
+/// audited on the day it is added and nobody has to remember anything.</para>
+///
+/// <para><b>The exact boundary, because "cannot reach the database" would be a lie.</b> SQL issued
+/// around the change tracker is not seen by this interceptor, and the repository already contains
+/// one deliberate example — <c>EfIdempotencyStore</c> writes its three statements with
+/// <c>ExecuteSqlRawAsync</c>, correctly, since an idempotency key is transport plumbing rather than a
+/// fact about the library. The latent risk is the same mechanism used carelessly:
+/// <c>ExecuteUpdateAsync</c> and <c>ExecuteDeleteAsync</c> are the obvious tools for a bulk
+/// operation such as the retention job, and a change made with either is unaudited with nothing to
+/// indicate it. If this system ever grows a bulk write over business data, that write needs its own
+/// audit row and this comment is the reason someone should notice.</para>
 ///
 /// <para><b>Why it writes into the same unit of work.</b> The audit rows are added to the same change
 /// tracker, so they are inserted by the same <c>SaveChanges</c>, inside the same transaction, as the

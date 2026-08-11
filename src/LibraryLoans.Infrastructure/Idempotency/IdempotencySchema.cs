@@ -26,5 +26,7 @@ internal static class IdempotencySchema
 
     public const string ContentTypeColumn = "content_type";
 
+    public const string HeadersColumn = "headers";
+
     public const string BodyColumn = "body";
 }

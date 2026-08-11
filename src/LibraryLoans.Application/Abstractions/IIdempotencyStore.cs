@@ -4,7 +4,25 @@ namespace LibraryLoans.Application.Abstractions;
 /// A response that was already produced for an idempotency key, kept so that a retry of the same
 /// request can be answered with it instead of doing the work twice.
 /// </summary>
-public sealed record IdempotentResponse(int StatusCode, string? ContentType, byte[] Body);
+/// <param name="Headers">
+/// The response headers worth reproducing, which is deliberately not all of them.
+///
+/// <para><b>A replay that drops <c>Location</c> is not a replay.</b> Every creating endpoint here
+/// answers with <c>201</c> and a <c>Location</c>, and a client that follows it — a generated SDK,
+/// most obviously — gets null on the retry path, which is the exact path this whole mechanism exists
+/// to serve. Storing the status and the body alone is the version of this feature that passes its
+/// own tests and fails its first real client.</para>
+///
+/// <para>An allowlist rather than everything, because most of a response's headers describe <i>this</i>
+/// exchange and not the outcome: <c>Date</c>, <c>Server</c>, connection handling and any
+/// <c>Set-Cookie</c> belong to the call that is happening now, and <c>Content-Length</c> is
+/// recalculated from the body being written.</para>
+/// </param>
+public sealed record IdempotentResponse(
+    int StatusCode,
+    string? ContentType,
+    IReadOnlyDictionary<string, string> Headers,
+    byte[] Body);
 
 /// <summary>What claiming an idempotency key turned out to mean.</summary>
 public enum IdempotencyOutcome

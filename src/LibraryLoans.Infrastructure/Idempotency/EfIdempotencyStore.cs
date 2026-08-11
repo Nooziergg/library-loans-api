@@ -1,7 +1,9 @@
+using System.Text.Json;
 using LibraryLoans.Application.Abstractions;
 using LibraryLoans.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using NpgsqlTypes;
 
 namespace LibraryLoans.Infrastructure.Idempotency;
 
@@ -46,6 +48,7 @@ internal sealed class EfIdempotencyStore(LibraryDbContext dbContext, TimeProvide
          UPDATE {IdempotencySchema.Table}
          SET {IdempotencySchema.StatusCodeColumn} = @statusCode,
              {IdempotencySchema.ContentTypeColumn} = @contentType,
+             {IdempotencySchema.HeadersColumn} = @headers,
              {IdempotencySchema.BodyColumn} = @body
          WHERE {IdempotencySchema.KeyColumn} = @key
          """;
@@ -102,7 +105,11 @@ internal sealed class EfIdempotencyStore(LibraryDbContext dbContext, TimeProvide
 
         return new IdempotencyReservation(
             IdempotencyOutcome.Completed,
-            new IdempotentResponse(statusCode, existing.ContentType, existing.Body ?? []));
+            new IdempotentResponse(
+                statusCode,
+                existing.ContentType,
+                Deserialize(existing.Headers),
+                existing.Body ?? []));
     }
 
     public Task CompleteAsync(string key, IdempotentResponse response, CancellationToken cancellationToken) =>
@@ -112,9 +119,30 @@ internal sealed class EfIdempotencyStore(LibraryDbContext dbContext, TimeProvide
                 new NpgsqlParameter("key", key),
                 new NpgsqlParameter("statusCode", response.StatusCode),
                 new NpgsqlParameter("contentType", (object?)response.ContentType ?? DBNull.Value),
+                new NpgsqlParameter(IdempotencySchema.HeadersColumn, NpgsqlDbType.Jsonb)
+                {
+                    Value = response.Headers.Count == 0
+                        ? DBNull.Value
+                        : JsonSerializer.Serialize(response.Headers),
+                },
                 new NpgsqlParameter("body", response.Body),
             ],
             cancellationToken);
+
+    /// <summary>
+    /// A stored headers document that cannot be read is not worth failing a retry over: the status
+    /// and the body are the substance, and answering with them minus a <c>Location</c> beats
+    /// answering with a 500. It is logged nowhere because it cannot happen — the column is jsonb, so
+    /// PostgreSQL rejected anything malformed at write time — and a catch that can only fire if the
+    /// database has been edited by hand should not pretend otherwise.
+    /// </summary>
+    private static IReadOnlyDictionary<string, string> Deserialize(string? headers) =>
+        string.IsNullOrEmpty(headers)
+            ? EmptyHeaders
+            : JsonSerializer.Deserialize<Dictionary<string, string>>(headers) ?? EmptyHeaders;
+
+    private static readonly IReadOnlyDictionary<string, string> EmptyHeaders =
+        new Dictionary<string, string>();
 
     public Task ReleaseAsync(string key, CancellationToken cancellationToken) =>
         dbContext.Database.ExecuteSqlRawAsync(

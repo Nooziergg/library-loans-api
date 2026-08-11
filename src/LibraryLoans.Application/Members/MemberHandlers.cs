@@ -20,10 +20,10 @@ public sealed class GetMemberByIdHandler(IMemberQueries members)
 
 public sealed class SearchMembersHandler(IMemberQueries members)
 {
-    public async Task<Result<PagedResponse<MemberResponse>>> HandleAsync(
+    public async Task<Result<PagedResponse<MemberSummaryResponse>>> HandleAsync(
         MemberSearchQuery query,
         CancellationToken cancellationToken) =>
-        Result<PagedResponse<MemberResponse>>.Success(await members.SearchAsync(query, cancellationToken));
+        Result<PagedResponse<MemberSummaryResponse>>.Success(await members.SearchAsync(query, cancellationToken));
 }
 
 /// <summary>

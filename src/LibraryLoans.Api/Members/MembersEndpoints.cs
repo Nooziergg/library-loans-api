@@ -67,7 +67,7 @@ internal static class MembersEndpoints
         return api;
     }
 
-    private static async Task<Results<Ok<PagedResponse<MemberResponse>>, ProblemHttpResult>> SearchAsync(
+    private static async Task<Results<Ok<PagedResponse<MemberSummaryResponse>>, ProblemHttpResult>> SearchAsync(
         [AsParameters] MemberSearchRequest request,
         SearchMembersHandler handler,
         CancellationToken cancellationToken)

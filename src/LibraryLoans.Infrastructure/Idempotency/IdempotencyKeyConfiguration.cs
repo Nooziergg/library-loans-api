@@ -51,6 +51,12 @@ internal sealed class IdempotencyKeyConfiguration : IEntityTypeConfiguration<Ide
             .HasColumnName(IdempotencySchema.ContentTypeColumn)
             .HasMaxLength(100);
 
+        // jsonb, like the audit trail's changes column and for the same reasons: validated on write,
+        // and readable in psql without a client to parse it.
+        builder.Property(entry => entry.Headers)
+            .HasColumnName(IdempotencySchema.HeadersColumn)
+            .HasColumnType("jsonb");
+
         builder.Property(entry => entry.Body)
             .HasColumnName(IdempotencySchema.BodyColumn);
 

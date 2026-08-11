@@ -106,7 +106,40 @@ public sealed class MembersEndpointsTests : IAsyncLifetime
         Assert.Equal(2, all.TotalCount);
         Assert.Equal(1, active.TotalCount);
         Assert.Equal(1, suspended.TotalCount);
-        Assert.Equal("Bruno Castellani", suspended.Items[0].Name);
+
+        // Identified by membership number rather than by name, which is the whole point of the
+        // summary shape: the filter still works and the register still says who is suspended,
+        // without publishing a borrower's identity to an anonymous caller.
+        Assert.Equal("M00000002", suspended.Items[0].MembershipNumber);
+    }
+
+    /// <summary>
+    /// The register is a page of up to a hundred borrowers, and it answers anyone. Before this was
+    /// fixed it carried every one of their names and email addresses — while the handler four lines
+    /// away in the same feature carefully logged only the id, on the stated rule that personal data
+    /// must not outlive the request. The rule was real and it was being enforced in one layer and
+    /// broken in the next.
+    ///
+    /// Asserted against the raw JSON rather than a deserialized type, because a DTO that no longer
+    /// has the property cannot demonstrate that the property is gone from the wire.
+    /// </summary>
+    [Fact]
+    public async Task Does_not_publish_names_or_email_addresses_in_the_register()
+    {
+        await RegisterAsync("M55555555", "Bruno Castellani", "bruno@example.com");
+
+        var payload = await _client.GetStringAsync("/api/v1/members");
+
+        Assert.Contains("M55555555", payload, StringComparison.Ordinal);
+        Assert.DoesNotContain("Bruno Castellani", payload, StringComparison.Ordinal);
+        Assert.DoesNotContain("bruno@example.com", payload, StringComparison.Ordinal);
+
+        // The detail read is a targeted lookup that needs a known id, so it keeps the full shape.
+        // Enumeration is the risk the summary closes, not secrecy.
+        var id = (await SearchMembersAsync(string.Empty)).Items[0].Id;
+        var detail = await _client.GetFromJsonAsync<MemberResponse>($"/api/v1/members/{id}");
+
+        Assert.Equal("bruno@example.com", detail!.Email);
     }
 
     [Fact]
@@ -163,12 +196,12 @@ public sealed class MembersEndpointsTests : IAsyncLifetime
         Assert.Equal(0, page.TotalCount);
     }
 
-    private async Task<PagedResponse<MemberResponse>> SearchMembersAsync(string query)
+    private async Task<PagedResponse<MemberSummaryResponse>> SearchMembersAsync(string query)
     {
         var response = await _client.GetAsync($"/api/v1/members{query}");
         response.EnsureSuccessStatusCode();
 
-        var page = await response.Content.ReadFromJsonAsync<PagedResponse<MemberResponse>>();
+        var page = await response.Content.ReadFromJsonAsync<PagedResponse<MemberSummaryResponse>>();
         Assert.NotNull(page);
 
         return page;

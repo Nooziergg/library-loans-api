@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using LibraryLoans.IntegrationTests.Infrastructure;
 
@@ -62,6 +63,18 @@ public sealed class IdempotencyTests : IAsyncLifetime
         return _client.SendAsync(request);
     }
 
+    private Task<HttpResponseMessage> PostRawAsync(string idempotencyKey, string body)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/books")
+        {
+            Content = new StringContent(body, Encoding.UTF8, "application/json"),
+        };
+
+        request.Headers.Add(IdempotencyKeyHeader, idempotencyKey);
+
+        return _client.SendAsync(request);
+    }
+
     private async Task<int> CountBooksAsync()
     {
         using var document = JsonDocument.Parse(
@@ -92,6 +105,13 @@ public sealed class IdempotencyTests : IAsyncLifetime
 
         Assert.False(first.Headers.Contains(ReplayedHeader));
         Assert.Equal("true", Assert.Single(second.Headers.GetValues(ReplayedHeader)));
+
+        // A 201 whose Location is missing tells the client something was created and refuses to say
+        // where. The first version of this feature stored only the status and the body, and it
+        // passed every assertion above — which is what a test written to the implementation rather
+        // than to the promise looks like.
+        Assert.NotNull(first.Headers.Location);
+        Assert.Equal(first.Headers.Location, second.Headers.Location);
 
         Assert.Equal(1, await CountBooksAsync());
     }
@@ -160,6 +180,29 @@ public sealed class IdempotencyTests : IAsyncLifetime
     /// empty value before it reaches the wire, so a test for it would be testing the client. The
     /// server-side check covers it — <c>IsWellFormed</c> requires a length above zero.</para>
     /// </summary>
+    /// <summary>
+    /// A malformed body fails during model binding, which throws — so whether this is stored depends
+    /// entirely on where the middleware sits relative to the exception handler. Registered inside it,
+    /// the throw unwinds past the middleware, the buffer is empty, the key is released, and the 400
+    /// the handler produces afterwards is never stored: the documented rule "a 4xx is stored and
+    /// replayed" silently would not hold for the commonest 4xx of all. This test is what pins the
+    /// ordering, because nothing else in the suite would notice it changing.
+    /// </summary>
+    [Fact]
+    public async Task Replays_a_response_the_exception_handler_produced()
+    {
+        var first = await PostRawAsync("malformed-1", "{not json at all");
+        var second = await PostRawAsync("malformed-1", "{not json at all");
+
+        Assert.Equal(HttpStatusCode.BadRequest, first.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, second.StatusCode);
+        Assert.Equal("true", Assert.Single(second.Headers.GetValues(ReplayedHeader)));
+
+        Assert.Equal(
+            await first.Content.ReadAsStringAsync(),
+            await second.Content.ReadAsStringAsync());
+    }
+
     [Theory]
     [InlineData("has spaces")]
     [InlineData("semi;colon")]

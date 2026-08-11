@@ -120,16 +120,25 @@ var app = builder.Build();
 // summarising the request that caused it share an identifier.
 app.UseMiddleware<RequestLoggingMiddleware>();
 
+// Outside the exception handler, which is a correction worth recording rather than quietly
+// swapping: this was registered inside it first, and the ordering was wrong in a way that a passing
+// test suite did not show. Inside, an endpoint that threw would unwind *through* this middleware —
+// the buffered response would be empty, the key released on the way past, and the 400 or 500 the
+// handler produced afterwards would be written to the real stream and never stored. So the rule
+// "a 4xx is stored and replayed" quietly did not hold for a malformed body, which throws during
+// model binding. Outside, the handler runs first and writes its ProblemDetails into the buffer, so
+// what is stored is what the client actually received, whatever produced it.
+//
+// Buffering is also what lets the handler set a status at all: nothing has reached the wire yet, so
+// Response.HasStarted is still false when it runs.
+//
+// Being outside the endpoints, meanwhile, is what makes one registration cover every POST there
+// will ever be, rather than a filter each endpoint has to remember to attach.
+app.UseMiddleware<IdempotencyMiddleware>();
+
 // Anything thrown downstream becomes a ProblemDetails rather than reaching the framework's
 // developer error page.
 app.UseExceptionHandler();
-
-// Outside the endpoints and inside the exception handler, and both halves of that are deliberate.
-// Inside the handler means the response this middleware captures and stores is the finished one —
-// including a 500 the handler substituted, which is the case it must recognise and *not* store.
-// Outside the endpoints means one registration covers every POST there will ever be, rather than a
-// filter each endpoint has to remember to attach.
-app.UseMiddleware<IdempotencyMiddleware>();
 
 // Off unless explicitly enabled; compose turns it on. See DatabaseMigrator for why production
 // would not do this.

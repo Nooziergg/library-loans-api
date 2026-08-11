@@ -115,10 +115,10 @@ public sealed class Member
     /// than a no-op, matching the ruling on returning a loan twice. The caller asked for a state
     /// change that did not happen, and saying so is more useful than silence.
     ///
-    /// No production code calls this yet — the first caller is the data seeder, which needs a
-    /// suspended member so that the rule preventing them from borrowing is visible to a reviewer
-    /// rather than merely tested. It exists now because it is the only door into the Suspended
-    /// state, and the guard on borrowing while suspended cannot be tested without it.
+    /// Reached from <c>POST /api/v1/members/{id}/suspend</c>, and from the data seeder, which needs
+    /// a suspended member so that the rule preventing them from borrowing is visible to a reviewer
+    /// rather than merely tested. It is the only door into the Suspended state, which is what makes
+    /// the guard on borrowing while suspended testable at all.
     /// </summary>
     public Result Suspend()
     {

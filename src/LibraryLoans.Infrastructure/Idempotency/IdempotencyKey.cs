@@ -22,6 +22,7 @@ internal sealed class IdempotencyKey
         DateTimeOffset createdAt,
         int? statusCode,
         string? contentType,
+        string? headers,
         byte[]? body)
     {
         Key = key;
@@ -29,6 +30,7 @@ internal sealed class IdempotencyKey
         CreatedAt = createdAt;
         StatusCode = statusCode;
         ContentType = contentType;
+        Headers = headers;
         Body = body;
     }
 
@@ -52,6 +54,12 @@ internal sealed class IdempotencyKey
     public int? StatusCode { get; }
 
     public string? ContentType { get; }
+
+    /// <summary>
+    /// The allowlisted response headers, as a JSON object — <c>Location</c> above all, without which
+    /// a replayed <c>201</c> tells the client something was created and refuses to say where.
+    /// </summary>
+    public string? Headers { get; }
 
     public byte[]? Body { get; }
 }
