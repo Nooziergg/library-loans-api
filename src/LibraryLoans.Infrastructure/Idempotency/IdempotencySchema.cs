@@ -3,7 +3,7 @@ namespace LibraryLoans.Infrastructure.Idempotency;
 /// <summary>
 /// Table and column names for the idempotency table, in one place.
 ///
-/// These are needed twice — once by the EF Core mapping, once inside the raw SQL the store issues —
+/// These are needed twice (once by the EF Core mapping, once inside the raw SQL the store issues),
 /// and the compiler can check neither string against the other. A constant means a rename cannot
 /// leave three statements pointing at a column that no longer exists, which is the same reason
 /// <c>LoanConfiguration</c> holds its column names as constants for the index filter.

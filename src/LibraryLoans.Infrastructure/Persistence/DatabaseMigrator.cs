@@ -17,7 +17,7 @@ namespace LibraryLoans.Infrastructure.Persistence;
 /// <para>
 /// Known and accepted: against an empty database this path emits two <c>Error</c>-level log
 /// lines from <c>Microsoft.EntityFrameworkCore.Database.Command</c>, reporting a failed
-/// <c>SELECT</c> from <c>__EFMigrationsHistory</c>. Nothing is wrong — EF looks for the history
+/// <c>SELECT</c> from <c>__EFMigrationsHistory</c>. Nothing is wrong: EF looks for the history
 /// table by reading it, and on a first run it does not exist yet, so the statement fails and EF
 /// recovers by creating it. This project treats "logged as an error but is not one" as a defect,
 /// so it is worth saying why it is tolerated here rather than fixed.
@@ -30,7 +30,7 @@ namespace LibraryLoans.Infrastructure.Persistence;
 /// <see cref="LibraryDbContext"/> with its own logging configuration would duplicate the
 /// connection setup and stop the migration path from exercising the same options the app uses.
 /// The noise is two lines, once, on a database that has never been migrated, in a code path that
-/// production does not run — because there, migrations are a separate deployment step and this
+/// production does not run, because there, migrations are a separate deployment step and this
 /// method is never called.
 /// </para>
 /// </summary>

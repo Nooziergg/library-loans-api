@@ -92,8 +92,8 @@ public sealed class CreateBookHandlerTests
     }
 
     /// <summary>
-    /// The duplicate is detected in a different layer here — the pre-check missed it and the
-    /// database's unique index caught it — and the caller must not be able to tell the
+    /// The duplicate is detected in a different layer here, the pre-check missed it and the
+    /// database's unique index caught it, and the caller must not be able to tell the
     /// difference. Same code, same status, whichever path found it.
     /// </summary>
     [Fact]

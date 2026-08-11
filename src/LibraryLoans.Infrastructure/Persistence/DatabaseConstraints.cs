@@ -10,12 +10,12 @@ namespace LibraryLoans.Infrastructure.Persistence;
 /// turned a 409 into a 500.
 ///
 /// This class holds constraint and index names only. Column names live on the configuration that
-/// owns them — a column name is a different kind of string, and mixing the two dilutes a class whose
+/// owns them: a column name is a different kind of string, and mixing the two dilutes a class whose
 /// entire value is that everything in it belongs to one category.
 /// </summary>
 internal static class DatabaseConstraints
 {
-    // ── Unique constraints whose violation is translated into a domain error ──────────────────
+    // -- Unique constraints whose violation is translated into a domain error ------------------
     // Every name here must have an arm in DatabaseConstraintTranslation. An unmapped one is a 500
     // where a 409 belongs.
 
@@ -28,7 +28,7 @@ internal static class DatabaseConstraints
     /// <summary>
     /// **The centrepiece.** A copy may have at most one loan with no return date.
     ///
-    /// This is a <b>partial</b> unique index — <c>WHERE returned_at IS NULL</c> — and the filter is
+    /// This is a <b>partial</b> unique index, <c>WHERE returned_at IS NULL</c>, and the filter is
     /// the whole point. A plain unique index on <c>book_copy_id</c> would mean a copy could be
     /// borrowed once in its entire lifetime and never again, which is a different and much worse
     /// rule that happens to pass most of the same tests.
@@ -39,7 +39,7 @@ internal static class DatabaseConstraints
 
     public const string MembersMembershipNumberUniqueIndex = "ix_members_membership_number";
 
-    // ── Supporting indexes ───────────────────────────────────────────────────────────────────
+    // -- Supporting indexes -------------------------------------------------------------------
 
     /// <summary>
     /// Non-unique, partial. Backs the active-loan count that runs on every borrow; without it that
@@ -50,7 +50,7 @@ internal static class DatabaseConstraints
 
     /// <summary>
     /// Declared rather than left to EF Core, which would create it implicitly for the foreign key
-    /// and name it <c>IX_book_copies_book_id</c> — the one PascalCase identifier in a snake_case
+    /// and name it <c>IX_book_copies_book_id</c>: the one PascalCase identifier in a snake_case
     /// schema. It also stops being incidental: "which copies does this title have" is a question the
     /// catalogue will ask directly.
     /// </summary>
@@ -60,7 +60,7 @@ internal static class DatabaseConstraints
     /// Trigram indexes backing catalogue search.
     ///
     /// A substring match compiles to <c>ILIKE '%term%'</c>, and a leading wildcard cannot use a
-    /// B-tree — so without these, "search" would be a sequential scan and calling it scalable would
+    /// B-tree, so without these, "search" would be a sequential scan and calling it scalable would
     /// be a claim the schema does not support. GIN with <c>gin_trgm_ops</c> is the index that makes
     /// the shape correct; at this catalogue's size PostgreSQL will still choose a scan, and the
     /// README says so rather than implying otherwise.
@@ -70,7 +70,7 @@ internal static class DatabaseConstraints
     public const string BooksAuthorTrigramIndex = "ix_books_author_trgm";
 
     /// <summary>
-    /// "Everything that ever happened to this entity" — the question the audit trail exists to
+    /// "Everything that ever happened to this entity": the question the audit trail exists to
     /// answer, over a table that only ever grows.
     /// </summary>
     public const string AuditEntriesEntityIndex = "ix_audit_entries_entity";
@@ -88,7 +88,7 @@ internal static class DatabaseConstraints
     /// </summary>
     public const string IdempotencyKeysCreatedAtIndex = "ix_idempotency_keys_created_at";
 
-    // ── Check constraints ────────────────────────────────────────────────────────────────────
+    // -- Check constraints --------------------------------------------------------------------
 
     /// <summary>
     /// Deliberately <b>not</b> translated. It raises SQLSTATE 23514, not 23505, so
@@ -99,7 +99,7 @@ internal static class DatabaseConstraints
     /// </summary>
     public const string LoansDueAfterLoanedCheck = "ck_loans_due_after_loaned";
 
-    // ── Primary and foreign keys, named for schema consistency ───────────────────────────────
+    // -- Primary and foreign keys, named for schema consistency -------------------------------
 
     /// <summary>
     /// Named only for consistency: EF Core's default would be <c>PK_books</c>, which is the one
@@ -119,7 +119,7 @@ internal static class DatabaseConstraints
     /// <summary>
     /// Not merely a primary key: this one is the idempotency mechanism. Two concurrent requests
     /// carrying the same <c>Idempotency-Key</c> both insert this row, and PostgreSQL decides which
-    /// of them owns it. Same technique as <see cref="LoansActiveCopyUniqueIndex"/> — the gap between
+    /// of them owns it. Same technique as <see cref="LoansActiveCopyUniqueIndex"/>: the gap between
     /// checking and inserting is where duplicates are born, and only the database can close it.
     /// </summary>
     public const string IdempotencyKeysPrimaryKey = "pk_idempotency_keys";

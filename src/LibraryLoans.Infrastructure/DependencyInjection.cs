@@ -17,7 +17,7 @@ namespace LibraryLoans.Infrastructure;
 /// place the API project touches Infrastructure.
 ///
 /// <para><b>One port this does not supply:</b> <c>IAuditContext</c>. It answers who the caller is,
-/// which only the composition root can know, so the host registers it — <c>HttpAuditContext</c> in
+/// which only the composition root can know, so the host registers it: <c>HttpAuditContext</c> in
 /// the Api. A host that forgets fails when the context is first constructed, which is during
 /// startup migration, with a message naming the missing service.</para>
 /// </summary>
@@ -53,7 +53,7 @@ public static class InfrastructureServiceCollectionExtensions
             // transaction as the change it describes.
             .AddInterceptors(serviceProvider.GetRequiredService<AuditSaveChangesInterceptor>())
             .UseNpgsql(connectionString, npgsql =>
-                // Transient faults — a database restart, a brief network partition — are
+                // Transient faults (a database restart, a brief network partition) are
                 // retried rather than surfaced. Two consequences worth knowing:
                 //
                 // 1. An execution strategy refuses user-initiated transactions unless they are
@@ -70,7 +70,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // Backs the Idempotency-Key header. Scoped like everything else here because it shares the
-        // request's context — though every write it makes deliberately bypasses the change tracker;
+        // request's context, though every write it makes deliberately bypasses the change tracker;
         // see EfIdempotencyStore for why that is not an optimisation but a correctness requirement.
         services.AddScoped<IIdempotencyStore, EfIdempotencyStore>();
 

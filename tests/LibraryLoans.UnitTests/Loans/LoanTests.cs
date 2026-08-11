@@ -124,7 +124,7 @@ public sealed class LoanTests
 
     /// <summary>
     /// Invariant 6. A silent success here would tell a caller their book was returned when the
-    /// library's records say it was returned at some other moment — the second call is describing an
+    /// library's records say it was returned at some other moment: the second call is describing an
     /// event that did not happen.
     /// </summary>
     [Fact]

@@ -5,8 +5,8 @@ namespace LibraryLoans.Application.Books;
 /// <summary>
 /// The public shape of a book.
 ///
-/// Positional on purpose. Two places build this record — the mapping below, and the SQL
-/// projection in the read adapter — and a positional record makes adding a field a compile
+/// Positional on purpose. Two places build this record (the mapping below, and the SQL
+/// projection in the read adapter), and a positional record makes adding a field a compile
 /// error in both. A settable-property DTO would let the two drift, with the projection quietly
 /// leaving the new field at its default.
 /// </summary>

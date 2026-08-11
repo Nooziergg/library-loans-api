@@ -7,7 +7,7 @@ WORKDIR /src
 # Restore against project files only, so editing source does not invalidate the
 # (slow) restore layer.
 # Directory.Packages.props is not optional here. MSBuild finds it by walking up from the
-# project directory, and inside this image that walk ends at /src — so if it is missing,
+# project directory, and inside this image that walk ends at /src, so if it is missing,
 # central package management is silently off, every PackageReference loses its version, and
 # restore fails. It is easy to leave out precisely because a build at the repo root always
 # finds it.

@@ -68,7 +68,7 @@ internal sealed class BookConfiguration : IEntityTypeConfiguration<Book>
 
         // Declared through the model rather than as raw SQL in a migration, so both the extension
         // and these indexes live in the model snapshot and a later scaffold cannot silently drop
-        // them. See DatabaseConstraints for why a trigram index is the right tool here — and for
+        // them. See DatabaseConstraints for why a trigram index is the right tool here, and for
         // the honest note that at this data volume PostgreSQL will scan anyway.
         builder.HasIndex(book => book.Title)
             .HasMethod("gin")

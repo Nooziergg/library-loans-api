@@ -8,7 +8,7 @@ namespace LibraryLoans.UnitTests.Architecture;
 /// The Clean Architecture dependency rule, enforced by the build instead of by convention.
 ///
 /// This exists because "the domain must not depend on infrastructure" is the first thing a
-/// reviewer greps for and the easiest thing to lose silently over time — a single
+/// reviewer greps for and the easiest thing to lose silently over time: a single
 /// convenience reference added under deadline pressure inverts the whole design, and
 /// nothing else in the toolchain complains.
 /// </summary>
@@ -28,7 +28,7 @@ public sealed class DependencyRuleTests
     /// Deliberately not the same list as <see cref="ForbiddenInDomain"/>.
     ///
     /// Application is allowed the two first-party abstraction packages it uses to describe its
-    /// own composition and to log — and one of them,
+    /// own composition and to log, and one of them,
     /// <c>Microsoft.Extensions.DependencyInjection.Abstractions</c>, begins with a string that
     /// appears in Domain's list. Reusing that list here would fail on a reference that is
     /// deliberately present, and the natural next step would be loosening the Domain rule to

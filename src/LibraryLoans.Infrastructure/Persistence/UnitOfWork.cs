@@ -23,7 +23,7 @@ namespace LibraryLoans.Infrastructure.Persistence;
 /// One thing to know before adding a handler that saves twice: after a translated failure the
 /// rejected entity is still tracked in the Added state. That is harmless today, because the
 /// context is scoped per request and disposed straight after, and no handler saves more than
-/// once. It stops being harmless the moment one does — the second save re-attempts the entity
+/// once. It stops being harmless the moment one does: the second save re-attempts the entity
 /// that already failed, and the resulting error has no obvious connection to the code that
 /// triggered it. Detach it here at the point that changes.
 /// </summary>

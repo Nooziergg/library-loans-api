@@ -25,7 +25,7 @@ internal static class BooksEndpoints
     {
         var books = api.MapGroup("/books").WithTags("Books");
 
-        // Authorization is not implemented — see the seam in Program.cs and the design in
+        // Authorization is not implemented: see the seam in Program.cs and the design in
         // docs/AUTHORIZATION.md. The policy each endpoint would carry is noted inline, because
         // the answer differs per endpoint and deciding it once per endpoint at the time the
         // endpoint is written is how it stays consistent.
@@ -39,7 +39,7 @@ internal static class BooksEndpoints
             .WithSummary("Adds a title to the catalogue.");
 
         books.MapGet("/", SearchAsync)
-            // Shape is validated by the filter before this runs — the sort field against a
+            // Shape is validated by the filter before this runs: the sort field against a
             // published allowlist, the page bounds against a range. A sort name that is not on the
             // list is a malformed request, so it is a 400 rather than a domain refusal.
             .AddEndpointFilter<ValidationFilter<BookSearchRequest>>()
@@ -48,7 +48,7 @@ internal static class BooksEndpoints
 
         books.MapGet("/{id:guid}", GetByIdAsync)
             // Reading the catalogue needs only an authenticated caller, which the group-level
-            // default-deny policy already provides — so no explicit policy here. Worth stating
+            // default-deny policy already provides, so no explicit policy here. Worth stating
             // rather than leaving blank: an endpoint with no authorization line should be
             // recognisably a decision, not an omission.
             .WithName(GetBookByIdRouteName)

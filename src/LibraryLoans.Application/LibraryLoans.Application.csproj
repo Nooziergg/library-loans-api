@@ -12,7 +12,7 @@
     it is coupled to, and the DI abstractions exist only so this assembly can express its own
     composition in AddApplication() rather than making the API project enumerate every handler.
 
-    Domain, by contrast, stays at zero package references — enforced by DependencyRuleTests.
+    Domain, by contrast, stays at zero package references: enforced by DependencyRuleTests.
     That is the line that actually matters.
 
     Versions live in Directory.Packages.props.

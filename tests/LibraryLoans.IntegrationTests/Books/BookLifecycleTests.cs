@@ -7,13 +7,13 @@ using Microsoft.AspNetCore.Mvc;
 namespace LibraryLoans.IntegrationTests.Books;
 
 /// <summary>
-/// Updating and deleting catalogue entries — the U and D of CRUD.
+/// Updating and deleting catalogue entries: the U and D of CRUD.
 ///
 /// The delete cases are the interesting ones, and the second is the one that would have been a 500.
 /// The foreign key from loans to copies is <c>Restrict</c>, so a loan blocks the delete whether or
 /// not the copy has come back: a precondition checking only for <i>active</i> loans would pass, the
 /// database would reject the statement with a foreign-key violation, and nothing would translate
-/// it. Hence two preconditions with two distinct codes — one retryable, one not.
+/// it. Hence two preconditions with two distinct codes: one retryable, one not.
 /// </summary>
 [Collection(DatabaseCollection.Name)]
 public sealed class BookLifecycleTests : IAsyncLifetime
@@ -37,7 +37,7 @@ public sealed class BookLifecycleTests : IAsyncLifetime
         await _factory.DisposeAsync();
     }
 
-    // ── Update ────────────────────────────────────────────────────────────────────────────────
+    // -- Update --------------------------------------------------------------------------------
 
     [Fact]
     public async Task Corrects_a_titles_details()
@@ -67,7 +67,7 @@ public sealed class BookLifecycleTests : IAsyncLifetime
     /// A blank title is a **400**: it is a shape error, caught by the request DTO before a handler
     /// runs, exactly as it is on create. A year in the future is a **422**: the bound depends on the
     /// current time, so it cannot be an attribute and the domain is the only thing that can decide
-    /// it. That asymmetry is not an accident of where the checks happen — it is what the two layers
+    /// it. That asymmetry is not an accident of where the checks happen. It is what the two layers
     /// are for, and it is why the domain's own title check is not dead code even though HTTP callers
     /// never reach it.
     /// </summary>
@@ -109,7 +109,7 @@ public sealed class BookLifecycleTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    // ── Delete ────────────────────────────────────────────────────────────────────────────────
+    // -- Delete --------------------------------------------------------------------------------
 
     [Fact]
     public async Task Deletes_a_title_and_its_copies_when_it_has_never_been_borrowed()
@@ -144,7 +144,7 @@ public sealed class BookLifecycleTests : IAsyncLifetime
 
     /// <summary>
     /// The case that would have been a 500. The copy is back on the shelf, so a precondition looking
-    /// only for active loans would let the delete through — and the foreign key from the returned
+    /// only for active loans would let the delete through, and the foreign key from the returned
     /// loan to the copy would reject it as an untranslated violation.
     ///
     /// It is also a genuinely different answer for a caller: unlike the case above, waiting will
@@ -168,7 +168,7 @@ public sealed class BookLifecycleTests : IAsyncLifetime
             "book.has_loan_history",
             (await response.Content.ReadFromJsonAsync<ProblemDetails>())?.Extensions["code"]?.ToString());
 
-        // Still there, and still readable — refused, not partially applied.
+        // Still there, and still readable: refused, not partially applied.
         Assert.Equal(HttpStatusCode.OK, (await _client.GetAsync($"/api/v1/books/{id}")).StatusCode);
     }
 

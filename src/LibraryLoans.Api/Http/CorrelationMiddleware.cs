@@ -18,10 +18,10 @@ namespace LibraryLoans.Api.Http;
 /// <para>Two things genuinely are missing, and they are what is left here:</para>
 /// <list type="number">
 /// <item>Nothing returns an identifier to the caller. A support conversation starts with the person
-/// who saw the failure, and they can only quote what they were given — so it goes in a response
+/// who saw the failure, and they can only quote what they were given, so it goes in a response
 /// header, and into the RFC 7807 body via <c>TraceIdentifier</c>.</item>
 /// <item><c>traceparent</c> is a 55-character machine format. A caller who wants their own readable
-/// label on a request — a batch name, a ticket number — has nowhere to put it, so
+/// label on a request (a batch name, a ticket number) has nowhere to put it, so
 /// <c>X-Correlation-Id</c> is accepted as an alias.</item>
 /// </list>
 ///
@@ -38,7 +38,7 @@ internal sealed class CorrelationMiddleware(
 
     /// <summary>
     /// Bounds an attacker-controlled value before it reaches the log. The JSON formatter escapes what
-    /// it writes, so a newline cannot forge an entry — but an unbounded header would still be copied
+    /// it writes, so a newline cannot forge an entry, but an unbounded header would still be copied
     /// into every line of the request, and log volume is a budget like any other.
     /// </summary>
     internal const int MaxCorrelationIdLength = 64;
@@ -88,7 +88,7 @@ internal sealed class CorrelationMiddleware(
     }
 
     /// <summary>
-    /// The identifier the framework already established — from an inbound <c>traceparent</c> if the
+    /// The identifier the framework already established, from an inbound <c>traceparent</c> if the
     /// caller sent one, otherwise freshly minted for this request.
     ///
     /// The format check is not decoration: an <see cref="Activity"/> in the legacy hierarchical

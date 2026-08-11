@@ -13,7 +13,7 @@ namespace LibraryLoans.IntegrationTests.Infrastructure;
 ///
 /// A real database rather than an in-memory substitute is the point. The behaviour under test
 /// includes a unique index deciding a race and PostgreSQL reporting SQLSTATE 23505 with a
-/// constraint name — none of which an in-memory provider reproduces, so a suite built on one
+/// constraint name: none of which an in-memory provider reproduces, so a suite built on one
 /// would pass while the production path was broken.
 /// </summary>
 public sealed class PostgresFixture : IAsyncLifetime
@@ -36,7 +36,7 @@ public sealed class PostgresFixture : IAsyncLifetime
     /// Empties every application table between test classes.
     ///
     /// The table list is read from the catalogue rather than hardcoded, so adding an aggregate
-    /// in a later phase does not silently leave a table uncleared — the failure that produces is
+    /// in a later phase does not silently leave a table uncleared: the failure that produces is
     /// an unrelated test failing intermittently, which is expensive to diagnose.
     ///
     /// The migrations history table is excluded: clearing it would make EF Core believe the

@@ -11,7 +11,7 @@
 
   <!--
     First-party OpenAPI document generation, so the API is discoverable without reading its
-    source. Note the transitive pin on Microsoft.OpenApi in Directory.Packages.props — this
+    source. Note the transitive pin on Microsoft.OpenApi in Directory.Packages.props: this
     package's own dependency on it is affected by a published CVE.
   -->
   <ItemGroup>

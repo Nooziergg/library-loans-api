@@ -16,7 +16,7 @@
     Because Design is PrivateAssets="all", it raises Relational to its own version for this
     project's compilation but does not pass that on to anything referencing this project.
     Consumers would instead resolve the provider's lower floor and load an older Relational than
-    this assembly was built against — an MSB3277 assembly conflict, and a mismatched EF Core at
+    this assembly was built against: an MSB3277 assembly conflict, and a mismatched EF Core at
     runtime. Naming it here keeps one Relational across the whole graph.
   -->
   <ItemGroup>

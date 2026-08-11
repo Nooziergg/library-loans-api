@@ -8,8 +8,8 @@ namespace LibraryLoans.Application.Abstractions;
 /// The response headers worth reproducing, which is deliberately not all of them.
 ///
 /// <para><b>A replay that drops <c>Location</c> is not a replay.</b> Every creating endpoint here
-/// answers with <c>201</c> and a <c>Location</c>, and a client that follows it — a generated SDK,
-/// most obviously — gets null on the retry path, which is the exact path this whole mechanism exists
+/// answers with <c>201</c> and a <c>Location</c>, and a client that follows it (a generated SDK,
+/// most obviously) gets null on the retry path, which is the exact path this whole mechanism exists
 /// to serve. Storing the status and the body alone is the version of this feature that passes its
 /// own tests and fails its first real client.</para>
 ///
@@ -32,7 +32,7 @@ public enum IdempotencyOutcome
 
     /// <summary>
     /// The key was claimed by a request that has not finished. Two copies of the same request are in
-    /// flight — the second must not proceed, and must not be told it succeeded either.
+    /// flight: the second must not proceed, and must not be told it succeeded either.
     /// </summary>
     InProgress,
 
@@ -40,8 +40,8 @@ public enum IdempotencyOutcome
     Completed,
 
     /// <summary>
-    /// The key exists, but against a different request. Almost always a client bug — a key reused
-    /// across two genuinely different calls — and answering it by replaying the first response would
+    /// The key exists, but against a different request. Almost always a client bug, a key reused
+    /// across two genuinely different calls, and answering it by replaying the first response would
     /// silently discard the second.
     /// </summary>
     FingerprintMismatch,
@@ -56,13 +56,13 @@ public sealed record IdempotencyReservation(IdempotencyOutcome Outcome, Idempote
 /// piece most likely to move. A single-instance service can hold these rows in its own database, as
 /// this implementation does; a fleet behind a load balancer usually wants them in something shared
 /// and expiring, such as Redis. That is a different implementation of these three methods and
-/// nothing else — in particular, not a change to the middleware that calls them.</para>
+/// nothing else, in particular, not a change to the middleware that calls them.</para>
 /// </summary>
 public interface IIdempotencyStore
 {
     /// <summary>
     /// Claims the key for this request, atomically. The implementation must make concurrent claims of
-    /// the same key resolve to exactly one <see cref="IdempotencyOutcome.Reserved"/> — this is the
+    /// the same key resolve to exactly one <see cref="IdempotencyOutcome.Reserved"/>. This is the
     /// whole mechanism, and a check-then-insert would defeat it.
     /// </summary>
     Task<IdempotencyReservation> ReserveAsync(string key, string fingerprint, CancellationToken cancellationToken);

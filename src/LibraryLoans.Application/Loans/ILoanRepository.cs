@@ -21,14 +21,14 @@ public interface ILoanRepository
     Task<bool> HasActiveLoanForBookAsync(Guid bookId, CancellationToken cancellationToken);
 
     /// <summary>
-    /// True when any loan — returned or not — references a copy of the title. A permanent obstacle
+    /// True when any loan, returned or not, references a copy of the title. A permanent obstacle
     /// to deletion, and a wider question than the one above: the foreign key refuses the delete for
     /// a loan returned years ago just as firmly as for one outstanding today.
     /// </summary>
     Task<bool> HasAnyLoanForBookAsync(Guid bookId, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Loads a loan in order to change it — the one read path in this codebase that is deliberately
+    /// Loads a loan in order to change it: the one read path in this codebase that is deliberately
     /// <b>tracked</b>. Every other read uses <c>AsNoTracking()</c>; returning a loan is a write that
     /// begins with a read, so the change tracker has to see it. The name says so, because an
     /// untracked entity here would mutate happily in memory and save nothing.

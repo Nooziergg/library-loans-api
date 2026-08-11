@@ -14,7 +14,7 @@ namespace LibraryLoans.Domain.Loans;
 public static class LoanErrors
 {
     /// <summary>
-    /// A <see cref="DomainErrorKind.Conflict"/>, so it becomes a 409 — from both the in-memory
+    /// A <see cref="DomainErrorKind.Conflict"/>, so it becomes a 409, from both the in-memory
     /// check and the database's ruling. It is a collision with existing state, not a defect in the
     /// request: the same request would have succeeded a moment earlier or a moment later.
     /// </summary>
@@ -34,7 +34,7 @@ public static class LoanErrors
     /// <summary>
     /// A conflict rather than a rule violation, and for the same reason as
     /// <see cref="CopyAlreadyOnLoan"/>: returning a loan twice collides with the state the resource
-    /// is already in. It is deliberately not a silent success — a caller that believes it returned
+    /// is already in. It is deliberately not a silent success: a caller that believes it returned
     /// a book it did not return has been misled, and this is the only signal that says otherwise.
     /// </summary>
     public static DomainError AlreadyReturned() =>

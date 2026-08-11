@@ -26,7 +26,7 @@ coverage*.info
 .DS_Store
 Thumbs.db
 
-# Local environment overrides — never commit real secrets
+# Local environment overrides: never commit real secrets
 .env
 .env.local
 appsettings.Local.json
@@ -44,5 +44,5 @@ docs/WORKFLOW.md
 # security controls the artifact does not have is worse than shipping no document.
 docs/AUTH.md
 
-# Local working notes — design proposals, review outcomes. Not deliverables.
+# Local working notes: design proposals, review outcomes. Not deliverables.
 *.local.md

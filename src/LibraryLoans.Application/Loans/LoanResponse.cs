@@ -7,7 +7,7 @@ namespace LibraryLoans.Application.Loans;
 /// construct it and a positional record makes adding a field a compile error in both.
 ///
 /// Deliberately carries no <c>IsOverdue</c>. Overdue is <c>ReturnedAt is null &amp;&amp; DueAt &lt;
-/// now</c> — a rule, and one that a database cannot evaluate from a domain method. Including the
+/// now</c>: a rule, and one that a database cannot evaluate from a domain method. Including the
 /// flag would force either materialising the entity and mapping it in memory, or re-expressing the
 /// rule inline in the SQL projection so it exists twice in two languages. It arrives with the
 /// filtered loan list, where the rule has to be written once in a form both C# and SQL can use.

@@ -14,13 +14,13 @@ namespace LibraryLoans.Api.Http;
 /// original response instead of doing the work a second time.
 ///
 /// <para><b>The problem it solves is not theoretical.</b> A client that sends <c>POST /loans</c> and
-/// times out does not know whether the loan was created — the request may have succeeded and the
+/// times out does not know whether the loan was created: the request may have succeeded and the
 /// response been lost. Its options are to retry and risk a duplicate, or to not retry and risk
 /// losing the operation. Every payments and banking API answers this the same way, and this is that
 /// answer: the client picks a key, and the server promises that one key means one execution.</para>
 ///
 /// <para><b>Why the other methods are absent.</b> <c>GET</c>, <c>PUT</c> and <c>DELETE</c> are
-/// already idempotent by definition — repeating them lands on the same state — so a key would add a
+/// already idempotent by definition, repeating them lands on the same state, so a key would add a
 /// table write for nothing. <c>POST</c> is the only method whose repetition means a second thing
 /// happening, which is exactly why HTTP declines to make it safe and leaves it to the API.</para>
 ///
@@ -30,7 +30,7 @@ namespace LibraryLoans.Api.Http;
 ///
 /// <para><b>What this is not.</b> It is not a substitute for the domain's own uniqueness rules. A
 /// duplicate borrow with <i>no</i> key is still refused by the partial unique index on active loans,
-/// and that remains the real guarantee — this makes a well-behaved client's retry pleasant, while
+/// and that remains the real guarantee. This makes a well-behaved client's retry pleasant, while
 /// the index is what makes the invariant true regardless of who calls it or how.</para>
 /// </summary>
 internal sealed class IdempotencyMiddleware(
@@ -43,7 +43,7 @@ internal sealed class IdempotencyMiddleware(
     /// <summary>
     /// Set on a replayed response so a caller can tell "your retry was already done" from "this ran
     /// now". Without it the two are indistinguishable, which makes the mechanism impossible to
-    /// observe from the outside — including from a test.
+    /// observe from the outside, including from a test.
     /// </summary>
     internal const string ReplayedHeaderName = "Idempotency-Replayed";
 
@@ -162,7 +162,7 @@ internal sealed class IdempotencyMiddleware(
             // make every retry of this request answer "in progress" until the row expired.
             httpContext.Features.Set(originalBodyFeature);
 
-            // The release gets its own guard, and this is not defensive habit — it is the difference
+            // The release gets its own guard, and this is not defensive habit. It is the difference
             // between reporting the fault that happened and reporting a different one. If the
             // endpoint threw because the database went away, this release throws too, and an
             // unguarded await here would replace the original exception with the second one. The
@@ -219,8 +219,8 @@ internal sealed class IdempotencyMiddleware(
     /// <summary>
     /// The headers a replay has to reproduce for the response to still mean what it meant.
     ///
-    /// <c>Location</c> is the one that matters here — every creating endpoint returns
-    /// <c>CreatedAtRoute</c> — and the other two are included because they identify the
+    /// <c>Location</c> is the one that matters here, every creating endpoint returns
+    /// <c>CreatedAtRoute</c>, and the other two are included because they identify the
     /// representation rather than the exchange. Everything else is deliberately not replayed: the
     /// rest of a response describes <i>this</i> call, and reissuing a stale <c>Date</c> or somebody
     /// else's <c>Set-Cookie</c> would be a bug with a much longer tail than a missing header.
@@ -274,7 +274,7 @@ internal sealed class IdempotencyMiddleware(
     /// <summary>
     /// Identifies the request this key was claimed for: method, path and body.
     ///
-    /// <para>The body has to be read to do it, which means buffering it — a request body is a
+    /// <para>The body has to be read to do it, which means buffering it: a request body is a
     /// forward-only stream, and the endpoint downstream still needs to read the same bytes.
     /// <c>EnableBuffering</c> is what makes reading it twice legal.</para>
     ///

@@ -8,7 +8,7 @@ namespace LibraryLoans.Application.Loans;
 /// <summary>
 /// Records a copy coming back.
 ///
-/// Takes only the loan id. There is deliberately no member to check it against — with no
+/// Takes only the loan id. There is deliberately no member to check it against, with no
 /// authentication there is no caller identity, so a <c>memberId</c> in the request would be an
 /// unauthenticated claim and comparing it would enforce nothing while looking like it did. See
 /// <c>docs/AUTHORIZATION.md</c>; a real library also accepts a returned book from whoever hands it

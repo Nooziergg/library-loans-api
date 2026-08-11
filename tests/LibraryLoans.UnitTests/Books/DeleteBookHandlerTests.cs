@@ -11,7 +11,7 @@ namespace LibraryLoans.UnitTests.Books;
 ///
 /// The distinction is the point: a copy currently out means "try again once it is back", while any
 /// lending history at all means never. Both are 409s, so a test asserting only the status code would
-/// pass with the two collapsed into one — which would lose the only part of the answer a client can
+/// pass with the two collapsed into one, which would lose the only part of the answer a client can
 /// act on.
 /// </summary>
 public sealed class DeleteBookHandlerTests
@@ -75,7 +75,7 @@ public sealed class DeleteBookHandlerTests
 
     /// <summary>
     /// Permanent, and the case that would otherwise be a 500. Every copy is back, so a precondition
-    /// that only looked for active loans would let this through — and the foreign key from the
+    /// that only looked for active loans would let this through, and the foreign key from the
     /// returned loan to the copy would reject the statement.
     /// </summary>
     [Fact]
@@ -99,7 +99,7 @@ public sealed class DeleteBookHandlerTests
 
     /// <summary>
     /// A borrow landing between the precondition and the write is decided by the foreign key, and
-    /// the unit of work reports it as the same retryable conflict the check produces — so the caller
+    /// the unit of work reports it as the same retryable conflict the check produces, so the caller
     /// cannot tell which layer noticed.
     /// </summary>
     [Fact]

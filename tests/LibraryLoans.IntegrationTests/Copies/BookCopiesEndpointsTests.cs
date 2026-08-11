@@ -10,7 +10,7 @@ namespace LibraryLoans.IntegrationTests.Copies;
 ///
 /// The unknown-book case is the one worth having. <c>AddBookCopyHandler</c> loads the book before
 /// constructing the copy, and that guard is the only thing standing between an invented
-/// <c>bookId</c> and a foreign-key violation — SQLSTATE 23503, which is not a unique violation, so
+/// <c>bookId</c> and a foreign-key violation: SQLSTATE 23503, which is not a unique violation, so
 /// nothing translates it and the unit of work rethrows. Remove the guard and this endpoint answers
 /// 500 for a mistake a caller can make by mistyping a URL.
 /// </summary>
@@ -53,7 +53,7 @@ public sealed class BookCopiesEndpointsTests : IAsyncLifetime
         // Canonicalised: a barcode's case is not part of its identity.
         Assert.Equal("COPY-0001", body.Barcode);
 
-        // No Location header, deliberately — there is no read endpoint for a copy yet, and a header
+        // No Location header, deliberately. There is no read endpoint for a copy yet, and a header
         // pointing at a 404 would be worse than none.
         Assert.Null(response.Headers.Location);
     }

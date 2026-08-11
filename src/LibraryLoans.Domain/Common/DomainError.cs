@@ -13,7 +13,7 @@ public enum DomainErrorKind
     /// <summary>Input was well-formed but a business rule forbids the operation.</summary>
     RuleViolation,
 
-    /// <summary>The operation collided with existing state — typically a uniqueness rule.</summary>
+    /// <summary>The operation collided with existing state, typically a uniqueness rule.</summary>
     Conflict,
 
     /// <summary>The addressed thing does not exist.</summary>

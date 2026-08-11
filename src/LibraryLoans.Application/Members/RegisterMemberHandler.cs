@@ -20,7 +20,7 @@ public sealed class RegisterMemberHandler(
             return membershipNumber.Error;
         }
 
-        // The cheap, clear rejection for the ordinary case. Not what makes the rule true — two
+        // The cheap, clear rejection for the ordinary case. Not what makes the rule true: two
         // registrations can pass this microseconds apart, and the unique index decides. The unit of
         // work translates that violation into this same error.
         if (await members.ExistsWithMembershipNumberAsync(membershipNumber.Value, cancellationToken))

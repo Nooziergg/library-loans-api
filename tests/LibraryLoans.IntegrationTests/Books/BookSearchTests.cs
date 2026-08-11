@@ -7,7 +7,7 @@ using LibraryLoans.IntegrationTests.Infrastructure;
 namespace LibraryLoans.IntegrationTests.Books;
 
 /// <summary>
-/// Searching, filtering, sorting and paging the catalogue — the brief's own words, over real HTTP
+/// Searching, filtering, sorting and paging the catalogue: the brief's own words, over real HTTP
 /// against real PostgreSQL.
 /// </summary>
 [Collection(DatabaseCollection.Name)]
@@ -32,7 +32,7 @@ public sealed class BookSearchTests : IAsyncLifetime
         await _factory.DisposeAsync();
     }
 
-    // ── Search ────────────────────────────────────────────────────────────────────────────────
+    // -- Search --------------------------------------------------------------------------------
 
     [Fact]
     public async Task Finds_a_book_by_part_of_its_title()
@@ -59,7 +59,7 @@ public sealed class BookSearchTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// The ISBN a caller types is the one printed on the book — hyphenated, and possibly the older
+    /// The ISBN a caller types is the one printed on the book: hyphenated, and possibly the older
     /// ten-digit form. Stored ISBNs are canonical thirteen-digit strings, so matching the term as
     /// raw text would find nothing at all. Running it through the value object first is what makes
     /// every spelling of one ISBN find the same row.
@@ -112,11 +112,11 @@ public sealed class BookSearchTests : IAsyncLifetime
         Assert.Equal(2, page.TotalCount);
     }
 
-    // ── availableOnly ─────────────────────────────────────────────────────────────────────────
+    // -- availableOnly -------------------------------------------------------------------------
 
     /// <summary>
     /// The filter is a correlated anti-join over loans, served by the same partial unique index
-    /// that enforces the loan invariant — which is why a copy carries no availability column that
+    /// that enforces the loan invariant, which is why a copy carries no availability column that
     /// could disagree with the loans table.
     /// </summary>
     [Fact]
@@ -130,7 +130,7 @@ public sealed class BookSearchTests : IAsyncLifetime
 
         var loan = await BorrowAsync(memberId, copyId);
         Assert.Equal(0, (await SearchAsync("?availableOnly=true")).TotalCount);
-        // Still in the catalogue — it is unavailable, not absent.
+        // Still in the catalogue. It is unavailable, not absent.
         Assert.Equal(1, (await SearchAsync(string.Empty)).TotalCount);
 
         await _client.PostAsync($"/api/v1/loans/{loan}/return", null);
@@ -159,7 +159,7 @@ public sealed class BookSearchTests : IAsyncLifetime
         Assert.Equal(0, (await SearchAsync("?availableOnly=true")).TotalCount);
     }
 
-    // ── Paging and sorting ────────────────────────────────────────────────────────────────────
+    // -- Paging and sorting --------------------------------------------------------------------
 
     [Fact]
     public async Task Pages_through_results_and_reports_the_total()
@@ -218,7 +218,7 @@ public sealed class BookSearchTests : IAsyncLifetime
     /// The test the tiebreaker exists for.
     ///
     /// Sorting by a column with duplicate values leaves ties in an order PostgreSQL does not
-    /// define. With LIMIT/OFFSET that means a row can appear on two pages, or on none — and every
+    /// define. With LIMIT/OFFSET that means a row can appear on two pages, or on none, and every
     /// book here shares an author deliberately, so the sort key is ties all the way down. Without
     /// `.ThenBy(id)` this fails; with it, paging is a partition of the whole set.
     /// </summary>
@@ -240,12 +240,12 @@ public sealed class BookSearchTests : IAsyncLifetime
         Assert.Equal(total, seen.Distinct().Count());
     }
 
-    // ── Shape errors are 400, not 422 ─────────────────────────────────────────────────────────
+    // -- Shape errors are 400, not 422 ---------------------------------------------------------
 
     /// <summary>
     /// A sort field nobody publishes is a malformed request, not a domain refusal. It is rejected
     /// by the allowlist on the request DTO before the application sees it, which is what makes it a
-    /// 400 — and what keeps a caller-supplied string out of the query builder entirely.
+    /// 400, and what keeps a caller-supplied string out of the query builder entirely.
     /// </summary>
     [Theory]
     [InlineData("?sortBy=nonsense")]
@@ -256,7 +256,7 @@ public sealed class BookSearchTests : IAsyncLifetime
     [InlineData("?pageSize=101")]
     [InlineData("?pageSize=100000")]
     // The upper boundary. Unbounded, (page - 1) * pageSize overflows int, wraps negative, and
-    // PostgreSQL rejects the negative OFFSET with an error nothing translates — a 500 for a
+    // PostgreSQL rejects the negative OFFSET with an error nothing translates: a 500 for a
     // value the API itself declared valid.
     [InlineData("?page=999999999")]
     [InlineData("?page=2147483647")]
@@ -275,7 +275,7 @@ public sealed class BookSearchTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
-    // ── Arrangement ──────────────────────────────────────────────────────────────────────────
+    // -- Arrangement --------------------------------------------------------------------------
 
     private async Task<PagedResponse<BookResponse>> SearchAsync(string query)
     {

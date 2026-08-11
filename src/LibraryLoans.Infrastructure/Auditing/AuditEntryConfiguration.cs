@@ -62,7 +62,7 @@ internal sealed class AuditEntryConfiguration : IEntityTypeConfiguration<AuditEn
             // The cost is a slightly slower insert, on rows nobody is in a hurry to write.
             .HasColumnType("jsonb");
 
-        // "Everything that ever happened to this loan" — the question an audit trail is opened to
+        // "Everything that ever happened to this loan": the question an audit trail is opened to
         // answer, and a sequential scan over a table that only grows is not an answer.
         builder.HasIndex(entry => new { entry.EntityType, entry.EntityId })
             .HasDatabaseName(DatabaseConstraints.AuditEntriesEntityIndex);

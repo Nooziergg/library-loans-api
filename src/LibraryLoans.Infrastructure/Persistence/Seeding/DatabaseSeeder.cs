@@ -13,17 +13,17 @@ namespace LibraryLoans.Infrastructure.Persistence.Seeding;
 /// copies, forty borrowers and eighty loans.
 ///
 /// <para><b>Everything is built through the domain factories.</b> <c>Book.Create</c>,
-/// <c>Member.Register</c>, <c>BookCopy.Add</c> and <c>Loan.Open</c> — never by constructing rows
+/// <c>Member.Register</c>, <c>BookCopy.Add</c> and <c>Loan.Open</c>: never by constructing rows
 /// directly. Two things follow from that, and the second is the interesting one. The seeded data
 /// provably satisfies every invariant, because it was produced by the same code that refuses
 /// invalid data over HTTP. And the seeder becomes the only caller of the domain that is not a web
-/// request, which is what would catch an aggregate that only works when driven from an endpoint —
+/// request, which is what would catch an aggregate that only works when driven from an endpoint.
 /// it has to supply <c>memberActiveLoanCount</c> and <c>copyHasActiveLoan</c> itself, from what it
 /// is building, which is the proof that <c>Loan.Open</c>'s signature is usable off the HTTP
 /// path.</para>
 ///
-/// <para><b>Deterministic, with two stated limits.</b> Nothing here is random — no faker library, no
-/// seeded <c>Random</c>, just index arithmetic over fixed lists — so the same titles, barcodes and
+/// <para><b>Deterministic, with two stated limits.</b> Nothing here is random (no faker library, no
+/// seeded <c>Random</c>, just index arithmetic over fixed lists), so the same titles, barcodes and
 /// membership numbers appear on every machine. Ids are <i>not</i> reproducible, because they are
 /// version-7 GUIDs containing a timestamp; neither are the dates, which are computed from the
 /// current instant at boot. Tests therefore assert on natural keys and on relative properties
@@ -31,7 +31,7 @@ namespace LibraryLoans.Infrastructure.Persistence.Seeding;
 ///
 /// <para><b>One <c>SaveChangesAsync</c> for the whole seed</b>, so it is a single transaction. A
 /// seeder that committed in stages could crash halfway and leave a database that the emptiness
-/// check below reads as already seeded — permanently half-populated, with nothing to indicate
+/// check below reads as already seeded: permanently half-populated, with nothing to indicate
 /// it.</para>
 /// </summary>
 public static class DatabaseSeeder
@@ -41,7 +41,7 @@ public static class DatabaseSeeder
     private const int SuspendedMemberIndex = 1;
     private const int OverdueMemberIndex = 2;
     /// <summary>
-    /// Index 3 rather than 0, because copies-per-title is <c>index % 4 + 1</c> — so this title has
+    /// Index 3 rather than 0, because copies-per-title is <c>index % 4 + 1</c>, so this title has
     /// four copies and "every copy is out" is a demonstration rather than a technicality about a
     /// title that only ever had one.
     /// </summary>
@@ -104,7 +104,7 @@ public static class DatabaseSeeder
             var book = Book.Create(isbn.Value, title, author, publishedYear, now);
 
             // Checked rather than assumed. Reading .Value on a failure throws a message with no
-            // index in it — "book.title.too_long" and nothing about which of sixty titles. The seed
+            // index in it: "book.title.too_long" and nothing about which of sixty titles. The seed
             // data is static, so this is unreachable unless someone edits it badly, which is exactly
             // when a message naming the row is worth having.
             if (!book.IsSuccess)
@@ -255,7 +255,7 @@ public static class DatabaseSeeder
         Open(overdueCopy, OverdueMemberIndex, now.AddDays(-30), returnIt: false);
 
         // History: loans taken and given back. These are what make the catalogue look used, and they
-        // are also what would break a plain unique index on book_copy_id — the copies below are
+        // are also what would break a plain unique index on book_copy_id: the copies below are
         // borrowable again, which is the partial index doing its job.
         var returnedCandidates = allCopies.Where(copy => !copyIsOut.Contains(copy.Id)).Take(30).ToList();
         for (var index = 0; index < returnedCandidates.Count; index++)
@@ -269,7 +269,7 @@ public static class DatabaseSeeder
         }
 
         // The rest: ordinary loans in progress, handed to the first borrower still below the cap. That
-        // fills the early members one at a time rather than spreading evenly — which is fine, and
+        // fills the early members one at a time rather than spreading evenly, which is fine, and
         // worth saying plainly: they stop one short of the limit, so member 0 remains the only one
         // demonstrating what being at the limit looks like.
         foreach (var copy in allCopies.Where(copy => !copyIsOut.Contains(copy.Id)))

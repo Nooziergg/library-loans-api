@@ -43,7 +43,7 @@ internal sealed class BookCopyConfiguration : IEntityTypeConfiguration<BookCopy>
             .HasDatabaseName(DatabaseConstraints.BookCopiesBookIndex);
 
         // Restrict rather than Cascade: deleting a title must not silently take its physical copies
-        // — and their loan history — with it. The rule a library wants is a refusal.
+        //, and their loan history, with it. The rule a library wants is a refusal.
         builder.HasOne<Book>()
             .WithMany()
             .HasForeignKey(copy => copy.BookId)

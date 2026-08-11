@@ -8,7 +8,7 @@ namespace LibraryLoans.Application.Members;
 public sealed record MemberSearchQuery(string? Status, int Page, int PageSize);
 
 /// <summary>
-/// The read side for members — untracked, projected in SQL. Separate from
+/// The read side for members: untracked, projected in SQL. Separate from
 /// <see cref="IMemberRepository"/> for the reason given on <c>IBookQueries</c>: serving reads from
 /// the repository would materialise the aggregate and its value objects only to map them in memory.
 /// </summary>

@@ -3,7 +3,7 @@ using LibraryLoans.Domain.Common;
 namespace LibraryLoans.Domain.Members;
 
 /// <summary>
-/// Every failure the Member aggregate can produce, defined once — for the reason
+/// Every failure the Member aggregate can produce, defined once, for the reason
 /// <see cref="Books.BookErrors"/> states: the duplicate-membership-number rule is detected in two
 /// different projects (the application's pre-check, and the database's unique index catching the
 /// request that lost a race), and a client must not be able to tell them apart.
@@ -47,7 +47,7 @@ public static class MemberErrors
             "That does not look like an email address.");
 
     /// <summary>
-    /// Suspending an already-suspended member is a conflict, not a silent no-op — the same ruling
+    /// Suspending an already-suspended member is a conflict, not a silent no-op: the same ruling
     /// this domain applies to returning a loan twice. An operation that quietly does nothing is
     /// indistinguishable, from the caller's side, from one that worked.
     /// </summary>
@@ -64,5 +64,5 @@ public static class MemberErrors
     private static string Echo(string input) =>
         input.Length <= MaxEchoedInputLength
             ? input
-            : string.Concat(input.AsSpan(0, MaxEchoedInputLength), "…");
+            : string.Concat(input.AsSpan(0, MaxEchoedInputLength), "...");
 }

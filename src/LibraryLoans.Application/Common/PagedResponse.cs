@@ -8,8 +8,8 @@ namespace LibraryLoans.Application.Common;
 /// load-bearing in someone's integration.
 /// </summary>
 /// <param name="TotalCount">
-/// Costs a second query against the same filter. Worth it — without it a client cannot render a
-/// page control or know whether to keep going — but worth knowing about, and it is the first thing
+/// Costs a second query against the same filter. Worth it, without it a client cannot render a
+/// page control or know whether to keep going, but worth knowing about, and it is the first thing
 /// to drop if a table ever grows large enough for the count to hurt.
 ///
 /// It is also not transactionally consistent with <paramref name="Items"/>: the two are separate

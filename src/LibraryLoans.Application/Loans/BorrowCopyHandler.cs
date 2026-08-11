@@ -10,12 +10,12 @@ using Microsoft.Extensions.Logging;
 namespace LibraryLoans.Application.Loans;
 
 /// <summary>
-/// Borrowing a copy — the use case the whole system is arranged around.
+/// Borrowing a copy: the use case the whole system is arranged around.
 ///
 /// Four sequential reads happen before the insert: the copy, the member, the member's active-loan
 /// count, and whether this copy is already out. That is named rather than hidden, because a reviewer
 /// will count them. The alternative is one query returning all four facts, which would mean
-/// <c>Loan.Open</c> taking loose scalars instead of the aggregates whose rules it applies — moving
+/// <c>Loan.Open</c> taking loose scalars instead of the aggregates whose rules it applies: moving
 /// the rules out of the objects that own them to save three round trips at a library's request rate.
 /// At a different rate the trade would go the other way, and that is worth knowing rather than
 /// discovering.
@@ -65,7 +65,7 @@ public sealed class BorrowCopyHandler(
 
         // Where the race is actually settled. If another request opened a loan on this copy between
         // the check above and this line, the partial unique index rejects the insert and the unit of
-        // work hands back LoanErrors.CopyAlreadyOnLoan() — byte for byte the error the in-memory
+        // work hands back LoanErrors.CopyAlreadyOnLoan(): byte for byte the error the in-memory
         // guard would have produced. The caller cannot tell which layer noticed.
         var saved = await unitOfWork.SaveChangesAsync(cancellationToken);
         if (!saved.IsSuccess)

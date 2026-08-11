@@ -11,7 +11,7 @@ namespace LibraryLoans.IntegrationTests.Seeding;
 /// <summary>
 /// The seed exists so a reviewer with only Docker can watch the rules fire rather than read that
 /// they exist. These tests assert that it produces enough data to satisfy the brief, that it puts
-/// the interesting states in it, and — the one that matters operationally — that running it twice
+/// the interesting states in it, and, the one that matters operationally, that running it twice
 /// does not duplicate anything.
 /// </summary>
 [Collection(DatabaseCollection.Name)]
@@ -45,7 +45,7 @@ public sealed class DatabaseSeederTests : IAsyncLifetime
 
     /// <summary>
     /// The test that protects a reviewer's database. A seeder that is not idempotent duplicates
-    /// everything on <c>docker compose restart</c> — and because every natural key here is unique,
+    /// everything on <c>docker compose restart</c>, and because every natural key here is unique,
     /// the second run would not merely duplicate but fail partway, leaving a mess with no
     /// indication of what happened.
     /// </summary>
@@ -74,7 +74,7 @@ public sealed class DatabaseSeederTests : IAsyncLifetime
     /// <summary>
     /// Every seeded row went through the domain factories, so this is really asserting that sixty
     /// titles, a hundred and fifty copies and eighty loans all satisfied the invariants on the way
-    /// in — including the one that says a copy cannot be on two active loans at once.
+    /// in, including the one that says a copy cannot be on two active loans at once.
     /// </summary>
     [Fact]
     public async Task No_copy_is_on_two_active_loans()

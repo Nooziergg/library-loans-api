@@ -12,7 +12,7 @@ namespace LibraryLoans.IntegrationTests.Idempotency;
 ///
 /// <para>Every assertion here is about what a retrying client observes, because that is the entire
 /// feature. The header names are written out as literals rather than referenced from the API
-/// assembly — they are a wire contract that clients hard-code, so renaming the constant should break
+/// assembly. They are a wire contract that clients hard-code, so renaming the constant should break
 /// these tests rather than quietly follow along.</para>
 /// </summary>
 [Collection(DatabaseCollection.Name)]
@@ -96,7 +96,7 @@ public sealed class IdempotencyTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Created, first.StatusCode);
         Assert.Equal(HttpStatusCode.Created, second.StatusCode);
 
-        // Byte-identical, including the id — which is the part that matters. A client that retried
+        // Byte-identical, including the id, which is the part that matters. A client that retried
         // and received a *different* id would have created one book and be holding a reference to
         // another.
         Assert.Equal(
@@ -108,7 +108,7 @@ public sealed class IdempotencyTests : IAsyncLifetime
 
         // A 201 whose Location is missing tells the client something was created and refuses to say
         // where. The first version of this feature stored only the status and the body, and it
-        // passed every assertion above — which is what a test written to the implementation rather
+        // passed every assertion above, which is what a test written to the implementation rather
         // than to the promise looks like.
         Assert.NotNull(first.Headers.Location);
         Assert.Equal(first.Headers.Location, second.Headers.Location);
@@ -137,7 +137,7 @@ public sealed class IdempotencyTests : IAsyncLifetime
 
     /// <summary>
     /// A key reused for a genuinely different request is a client bug. Replaying the first response
-    /// would tell the caller their second, different request had succeeded — so it is refused
+    /// would tell the caller their second, different request had succeeded, so it is refused
     /// instead, and nothing is created.
     /// </summary>
     [Fact]
@@ -154,7 +154,7 @@ public sealed class IdempotencyTests : IAsyncLifetime
 
     /// <summary>
     /// A refusal the client can act on is deterministic, so it is stored and replayed like any other
-    /// response. The alternative — releasing the key on a 4xx — would let a client retry its way
+    /// response. The alternative, releasing the key on a 4xx, would let a client retry its way
     /// past a validation error with the same key and get a different answer the second time.
     /// </summary>
     [Fact]
@@ -178,10 +178,10 @@ public sealed class IdempotencyTests : IAsyncLifetime
     ///
     /// <para>The empty-string case is absent on purpose: <c>HttpClient</c> drops a header with an
     /// empty value before it reaches the wire, so a test for it would be testing the client. The
-    /// server-side check covers it — <c>IsWellFormed</c> requires a length above zero.</para>
+    /// server-side check covers it: <c>IsWellFormed</c> requires a length above zero.</para>
     /// </summary>
     /// <summary>
-    /// A malformed body fails during model binding, which throws — so whether this is stored depends
+    /// A malformed body fails during model binding, which throws, so whether this is stored depends
     /// entirely on where the middleware sits relative to the exception handler. Registered inside it,
     /// the throw unwinds past the middleware, the buffer is empty, the key is released, and the 400
     /// the handler produces afterwards is never stored: the documented rule "a 4xx is stored and
@@ -231,7 +231,7 @@ public sealed class IdempotencyTests : IAsyncLifetime
     /// <summary>
     /// **The race the primary key arbitrates.**
     ///
-    /// Two copies of one request, in flight together — an impatient client, or a proxy that retried
+    /// Two copies of one request, in flight together: an impatient client, or a proxy that retried
     /// before the first attempt finished. Both try to claim the key; PostgreSQL lets one win. The
     /// loser is told the request is in progress rather than being allowed to run, and either way
     /// exactly one book exists at the end.

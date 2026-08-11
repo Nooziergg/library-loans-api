@@ -32,7 +32,7 @@ public sealed record MemberResponse(
 /// authorization layer into a data breach. So the collection stops being identifying and the
 /// single read keeps its detail.</para>
 ///
-/// <para>When authentication arrives this can be revisited — a librarian has every business reason
+/// <para>When authentication arrives this can be revisited: a librarian has every business reason
 /// to see names in a list. The point is that the shape is a decision with a reason, not an
 /// accident of reusing whichever DTO was already there.</para>
 /// </summary>

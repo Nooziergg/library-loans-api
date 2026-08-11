@@ -3,7 +3,7 @@ using LibraryLoans.Domain.Common;
 namespace LibraryLoans.Domain.Books;
 
 /// <summary>
-/// A catalogue title — the work, not a physical object. What a borrower actually carries home is
+/// A catalogue title: the work, not a physical object. What a borrower actually carries home is
 /// a physical copy of it, which is a separate concept: a library holds one Book and several
 /// copies of it, and a loan is against a copy rather than against the title.
 /// </summary>
@@ -13,7 +13,7 @@ public sealed class Book
     public const int AuthorMaxLength = 150;
 
     /// <summary>
-    /// Gutenberg's press, near enough. The point of a floor is not historical precision — it
+    /// Gutenberg's press, near enough. The point of a floor is not historical precision. It
     /// is that <c>145</c> and <c>19999</c> are typos rather than years, and a system that
     /// accepts them will be asked about them later.
     /// </summary>
@@ -78,12 +78,12 @@ public sealed class Book
     }
 
     /// <summary>
-    /// Corrects a catalogue entry — a misspelled title, an author's name, a wrong year.
+    /// Corrects a catalogue entry: a misspelled title, an author's name, a wrong year.
     ///
     /// <b>The ISBN is not among them, and cannot be.</b> It identifies the work; a row whose ISBN
     /// changed is describing a different book, and the honest shape of that operation is a delete
     /// and a create. The request type has no ISBN field at all rather than accepting one and
-    /// rejecting a change — unrepresentable beats validated, which is the same argument this
+    /// rejecting a change: unrepresentable beats validated, which is the same argument this
     /// codebase makes for value objects in the first place.
     ///
     /// Shares its validation with <see cref="Create"/> rather than repeating it, so the two cannot

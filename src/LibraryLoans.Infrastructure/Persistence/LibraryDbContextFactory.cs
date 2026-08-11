@@ -6,8 +6,8 @@ namespace LibraryLoans.Infrastructure.Persistence;
 /// <summary>
 /// Lets <c>dotnet ef</c> build the model without booting the API.
 ///
-/// Migration scaffolding only needs to know which provider is in use — it never opens a
-/// connection — so the string below is a placeholder and deliberately points at nothing real.
+/// Migration scaffolding only needs to know which provider is in use, it never opens a
+/// connection, so the string below is a placeholder and deliberately points at nothing real.
 /// Without this, the tooling would start the web host, which would demand a configured
 /// connection string and, in a container-less environment, fail for reasons that have nothing
 /// to do with generating a migration.

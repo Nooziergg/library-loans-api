@@ -6,8 +6,8 @@ namespace LibraryLoans.Api.Http;
 /// Runs DataAnnotations over a request DTO before the endpoint sees it, so shape errors are
 /// rejected once, in one place, with one response format.
 ///
-/// This handles the outer half of validation: is this a well-formed request. The inner half —
-/// is this a legal thing to ask for — lives in the domain, where a value object refuses to
+/// This handles the outer half of validation: is this a well-formed request. The inner half,
+/// is this a legal thing to ask for, lives in the domain, where a value object refuses to
 /// exist in an invalid state. Splitting them this way is what keeps request DTOs from growing
 /// business rules and domain types from growing presentation concerns.
 /// </summary>
@@ -38,7 +38,7 @@ internal sealed class ValidationFilter<TRequest> : IEndpointFilter
             });
         }
 
-        // The filter is attached to an endpoint that has no TRequest parameter at all — a
+        // The filter is attached to an endpoint that has no TRequest parameter at all: a
         // wiring mistake. Failing loudly is the entire point: the alternative is calling next()
         // and running the endpoint with no validation whatsoever, which is a security control
         // that silently switches itself off. This surfaces on the first request in the first

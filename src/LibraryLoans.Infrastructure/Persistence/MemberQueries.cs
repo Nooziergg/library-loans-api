@@ -40,7 +40,7 @@ internal sealed class MemberQueries(LibraryDbContext dbContext) : IMemberQueries
             .OrderBy(member => member.Id)
             .Skip((query.Page - 1) * query.PageSize)
             .Take(query.PageSize)
-            // Name and Email are absent by design — see MemberSummaryResponse. Because this is a
+            // Name and Email are absent by design: see MemberSummaryResponse. Because this is a
             // projection rather than a mapping in memory, they are not merely omitted from the JSON:
             // the SELECT never asks for those columns, so the personal data does not leave
             // PostgreSQL at all.

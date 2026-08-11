@@ -18,7 +18,7 @@ namespace LibraryLoans.IntegrationTests.Loans;
 ///
 /// These exist because the concurrency test cannot prove any of them. If two racing requests happen
 /// to serialise, the handler's own pre-check rejects the second one and the database is never
-/// consulted — so the translation path never runs and the test passes anyway. Should a constraint
+/// consulted, so the translation path never runs and the test passes anyway. Should a constraint
 /// name in <c>DatabaseConstraints</c> ever drift from the name in the migration,
 /// <c>DatabaseConstraintTranslation</c> would return null, the unit of work would rethrow, clients
 /// would start receiving 500s in place of 409s, and the rest of the suite would stay green.

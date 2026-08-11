@@ -52,13 +52,13 @@ internal static class MembersEndpoints
 
         members.MapPost("/{id:guid}/suspend", SuspendAsync)
             // .RequireAuthorization("RequireLibrarian")
-            //   Suspending a borrower is a staff action. Not implemented — docs/AUTHORIZATION.md.
+            //   Suspending a borrower is a staff action. Not implemented: docs/AUTHORIZATION.md.
             .WithName("SuspendMember")
             .WithSummary("Suspends a borrower, blocking new loans.");
 
         members.MapPost("/", RegisterAsync)
             // .RequireAuthorization("RequireLibrarian")
-            //   Registering a borrower is a staff operation. Authorization is not implemented —
+            //   Registering a borrower is a staff operation. Authorization is not implemented:
             //   see the seam in Program.cs and docs/AUTHORIZATION.md.
             .AddEndpointFilter<ValidationFilter<RegisterMemberRequest>>()
             .WithName("RegisterMember")

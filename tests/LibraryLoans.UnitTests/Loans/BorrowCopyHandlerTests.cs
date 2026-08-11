@@ -42,7 +42,7 @@ public sealed class BorrowCopyHandlerTests
 
     /// <summary>
     /// The polarity test. <c>HasActiveLoanForCopyAsync</c> returns true when the copy is out, and
-    /// the handler passes that straight through — inverting it is a one-character change the
+    /// the handler passes that straight through: inverting it is a one-character change the
     /// compiler cannot object to, and this is what catches it.
     /// </summary>
     [Fact]
@@ -104,7 +104,7 @@ public sealed class BorrowCopyHandlerTests
     }
 
     /// <summary>
-    /// The race lost at the database must be indistinguishable from the one caught in advance —
+    /// The race lost at the database must be indistinguishable from the one caught in advance:
     /// same code, same status, whichever layer noticed.
     /// </summary>
     [Fact]

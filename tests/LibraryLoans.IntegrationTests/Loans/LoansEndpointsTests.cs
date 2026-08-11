@@ -37,14 +37,14 @@ public sealed class LoansEndpointsTests : IAsyncLifetime
         await _factory.DisposeAsync();
     }
 
-    // ── The two that matter most ──────────────────────────────────────────────────────────────
+    // -- The two that matter most --------------------------------------------------------------
 
     /// <summary>
     /// The test that makes the word <i>partial</i> mean something.
     ///
     /// If the index on loans were a plain <c>UNIQUE (book_copy_id)</c> rather than
     /// <c>UNIQUE (book_copy_id) WHERE returned_at IS NULL</c>, every other test in this suite would
-    /// still pass — including the concurrency one — while the real behaviour of the library became
+    /// still pass, including the concurrency one, while the real behaviour of the library became
     /// "a copy can be borrowed once in its lifetime and never again". This is the only test that
     /// fails when the filter is missing, which is why it was written before the migration was
     /// scaffolded.
@@ -102,7 +102,7 @@ public sealed class LoansEndpointsTests : IAsyncLifetime
         Assert.Equal(1, activeLoans);
     }
 
-    // ── The rest of the invariants, over HTTP ────────────────────────────────────────────────
+    // -- The rest of the invariants, over HTTP ------------------------------------------------
 
     [Fact]
     public async Task Borrowing_a_copy_that_is_already_out_is_a_conflict()
@@ -196,7 +196,7 @@ public sealed class LoansEndpointsTests : IAsyncLifetime
     /// creation response and later compares it field-by-field to a fetch will see this, which is a
     /// good reason for the comparison to be on the identifier.
     ///
-    /// The tolerance is ten ticks — one microsecond — because that is exactly what the cause
+    /// The tolerance is ten ticks, one microsecond, because that is exactly what the cause
     /// permits, not a round number chosen for comfort. Anything looser would also pass if a handler
     /// re-read the clock, a timezone conversion crept in, or a rounding behaviour changed, none of
     /// which this test means to allow.
@@ -232,7 +232,7 @@ public sealed class LoansEndpointsTests : IAsyncLifetime
     /// <summary>
     /// A missing field is a malformed request and must be answered as one. Before the request's ids
     /// were made nullable this returned 404 describing a copy of all zeros, because
-    /// <c>[Required]</c> on a non-nullable <c>Guid</c> sees <c>Guid.Empty</c> and passes — a missing
+    /// <c>[Required]</c> on a non-nullable <c>Guid</c> sees <c>Guid.Empty</c> and passes: a missing
     /// field reported as a missing resource, and a different status class from the one a literal
     /// null in the same position produces.
     /// </summary>
@@ -265,7 +265,7 @@ public sealed class LoansEndpointsTests : IAsyncLifetime
             (await unknownMember.Content.ReadFromJsonAsync<ProblemDetails>())?.Extensions["code"]?.ToString());
     }
 
-    // ── Arrangement ──────────────────────────────────────────────────────────────────────────
+    // -- Arrangement --------------------------------------------------------------------------
 
     private async Task<(Guid CopyId, Guid MemberId)> ArrangeCopyAndMemberAsync()
     {

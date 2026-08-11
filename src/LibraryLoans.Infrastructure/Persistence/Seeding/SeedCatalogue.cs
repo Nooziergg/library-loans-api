@@ -6,8 +6,8 @@ namespace LibraryLoans.Infrastructure.Persistence.Seeding;
 /// Titles and authors are real, because a catalogue of generated lorem is filler a reviewer scrolls
 /// past, while <c>?search=orwell</c> returning <i>Nineteen Eighty-Four</i> demonstrates something.
 ///
-/// <b>The ISBNs are not real.</b> They are structurally valid — correct ISBN-13 check digits, so the
-/// domain accepts them — but they are generated rather than the identifiers these editions actually
+/// <b>The ISBNs are not real.</b> They are structurally valid (correct ISBN-13 check digits, so the
+/// domain accepts them), but they are generated rather than the identifiers these editions actually
 /// carry. That is deliberate: attaching a genuine ISBN to a row invented for a demonstration would
 /// put a real identifier on the wrong record, and the value of the seed is in the titles being
 /// recognisable, not in the numbers being lookupable. See <c>IsbnFor</c>.
@@ -85,7 +85,7 @@ internal static class SeedCatalogue
         ("Norwegian Wood", "Haruki Murakami", 1987),
     ];
 
-    /// <summary>Forty borrowers. Names are a fixed list rather than generated — see the seeder's note.</summary>
+    /// <summary>Forty borrowers. Names are a fixed list rather than generated: see the seeder's note.</summary>
     internal static readonly (string Name, string Email)[] Members =
     [
         ("Alice Whitfield", "alice.whitfield@example.test"),
@@ -131,7 +131,7 @@ internal static class SeedCatalogue
     ];
 
     /// <summary>
-    /// A structurally valid ISBN-13 derived from an index — same input, same output, on every
+    /// A structurally valid ISBN-13 derived from an index: same input, same output, on every
     /// machine and every run.
     ///
     /// The <c>9781</c> prefix keeps seeded rows clear of the <c>9780</c> range the integration tests
@@ -155,7 +155,7 @@ internal static class SeedCatalogue
 
     /// <summary>
     /// <c>M</c> followed by eight digits, which is the format the value object enforces. The leading
-    /// <c>9</c> is what keeps seeded members clear of the <c>M0…</c> range the integration tests use.
+    /// <c>9</c> is what keeps seeded members clear of the <c>M0...</c> range the integration tests use.
     /// </summary>
     internal static string MembershipNumberFor(int index) => $"M9{index:D7}";
 }

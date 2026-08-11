@@ -22,7 +22,7 @@ internal sealed class BookQueries(LibraryDbContext dbContext) : IBookQueries
     ///
     /// This is an allowlist rather than a lookup that falls back to something sensible: a name not
     /// in this dictionary is rejected before the request reaches the application, by
-    /// <c>[AllowedValues]</c> on the request DTO. Keep the two in step — the attribute is what
+    /// <c>[AllowedValues]</c> on the request DTO. Keep the two in step: the attribute is what
     /// produces the 400, and this is what produces the SQL.
     /// </summary>
     private static readonly Dictionary<string, Expression<Func<Book, object>>> SortableFields =
@@ -39,7 +39,7 @@ internal sealed class BookQueries(LibraryDbContext dbContext) : IBookQueries
         // contains and no entity is materialised or tracked. Reading book.Isbn.Value inside the
         // projection is safe despite the value converter: EF maps book.Isbn to the column, applies
         // the converter on materialisation, and evaluates .Value client-side while constructing the
-        // record — client evaluation is still permitted in the top-level projection.
+        // record: client evaluation is still permitted in the top-level projection.
         dbContext.Books
             .AsNoTracking()
             .Where(book => book.Id == id)
@@ -82,7 +82,7 @@ internal sealed class BookQueries(LibraryDbContext dbContext) : IBookQueries
     /// Matches a term against the ISBN, the title or the author.
     ///
     /// The ISBN branch exists because stored ISBNs are canonical 13-digit forms. A caller searching
-    /// for the number printed on the book — hyphenated, or the ISBN-10 of an older edition — would
+    /// for the number printed on the book (hyphenated, or the ISBN-10 of an older edition) would
     /// match nothing at all if the term were treated as text. Running it through the value object
     /// first turns any spelling of an ISBN into the one stored form, and that branch is an equality
     /// match served by the unique index rather than a scan.
@@ -104,7 +104,7 @@ internal sealed class BookQueries(LibraryDbContext dbContext) : IBookQueries
 
         // The term is caller-supplied and goes into a LIKE pattern, where % and _ are wildcards.
         // Unescaped, "%" alone would match the entire catalogue, and a term alternating % with
-        // literals turns matching pathological — a cheap way to burn CPU on an endpoint that is
+        // literals turns matching pathological: a cheap way to burn CPU on an endpoint that is
         // deliberately unauthenticated.
         var pattern = $"%{EscapeLikePattern(term)}%";
 
@@ -117,12 +117,12 @@ internal sealed class BookQueries(LibraryDbContext dbContext) : IBookQueries
     /// Titles with at least one copy not currently out.
     ///
     /// Expressed as a correlated subquery rather than through a navigation property, because
-    /// <see cref="Book"/> deliberately has no copies collection — adding one to make this read
+    /// <see cref="Book"/> deliberately has no copies collection: adding one to make this read
     /// nicely would invite loading a graph on every read of a book.
     ///
     /// The inner test is served by <c>ix_loans_active_copy</c>: the same partial unique index that
     /// makes "a copy cannot be on two active loans" true. That is why there is no availability
-    /// column on a copy to keep in sync — the index that enforces the invariant is the index that
+    /// column on a copy to keep in sync: the index that enforces the invariant is the index that
     /// answers this question.
     /// </summary>
     private IQueryable<Book> ApplyAvailability(IQueryable<Book> books, bool availableOnly)
@@ -144,7 +144,7 @@ internal sealed class BookQueries(LibraryDbContext dbContext) : IBookQueries
     ///
     /// The tiebreaker is not decoration. <c>ORDER BY title</c> alone leaves rows with equal titles
     /// in an order PostgreSQL does not define, and with <c>LIMIT/OFFSET</c> that means a row can
-    /// appear on two pages or on none — a bug invisible at small volumes and impossible to
+    /// appear on two pages or on none: a bug invisible at small volumes and impossible to
     /// reproduce once reported.
     ///
     /// The default is the key itself, which for version-7 GUIDs means insertion order. "No sort

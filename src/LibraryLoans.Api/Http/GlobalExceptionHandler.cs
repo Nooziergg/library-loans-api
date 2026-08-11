@@ -35,7 +35,7 @@ internal sealed class GlobalExceptionHandler(
         // and the resulting OperationCanceledException lands here. It is not a fault. Nobody is
         // listening, there is no socket left to write a response to, and recording it as an
         // error means the service's error rate measures how often users close tabs and how
-        // often mobile clients lose signal — which is what wakes someone up at three in the
+        // often mobile clients lose signal, which is what wakes someone up at three in the
         // morning for nothing.
         //
         // The RequestAborted conjunct is the part that has to be there. Treating every
@@ -49,7 +49,7 @@ internal sealed class GlobalExceptionHandler(
                 httpContext.Request.Path);
 
             // 499 is nginx's invention rather than an IANA-registered code, and no client will
-            // ever read it — the connection is gone. It is set anyway because things on this
+            // ever read it: the connection is gone. It is set anyway because things on this
             // side do read it: request logging and the built-in request-duration metric both
             // record Response.StatusCode, and leaving it at 200 would file every abandoned
             // request as a success. A borrowed status code in a log is a smaller lie than a
@@ -60,13 +60,13 @@ internal sealed class GlobalExceptionHandler(
             return true;
         }
 
-        // A body the framework could not read at all — malformed JSON, a string where a number
+        // A body the framework could not read at all: malformed JSON, a string where a number
         // belongs, no body where one is required, or a payload over the size limit. That is the
         // caller's mistake, and it already carries the right status; answering 500 would both
         // mislead the caller and file their typo as a server fault in the error rate.
         //
         // It also has to be handled here rather than by a filter, because the failure happens
-        // during model binding — before any endpoint filter runs, so the validation filter that
+        // during model binding, before any endpoint filter runs, so the validation filter that
         // produces the other 400s never sees these.
         if (exception is BadHttpRequestException badRequest)
         {

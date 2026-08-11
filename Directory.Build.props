@@ -16,7 +16,7 @@
     <!--
       TreatWarningsAsErrors only covers the C# compiler. Package and assembly-resolution
       problems are reported by MSBuild, so without this an unresolvable version conflict
-      between two dependencies passes a build that claims to treat warnings as errors —
+      between two dependencies passes a build that claims to treat warnings as errors,
       which is exactly the kind of quiet gap this project is meant not to have.
     -->
     <MSBuildTreatWarningsAsErrors>true</MSBuildTreatWarningsAsErrors>

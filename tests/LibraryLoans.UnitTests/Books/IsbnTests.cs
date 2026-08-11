@@ -17,10 +17,10 @@ public sealed class IsbnTests
     // ISBN-10 is accepted and re-encoded as its ISBN-13 equivalent.
     [InlineData("0306406152", "9780306406157")]
     [InlineData("0-306-40615-2", "9780306406157")]
-    // Heavily separated but still within the input bound — the companion to
+    // Heavily separated but still within the input bound: the companion to
     // Rejects_over_long_input_even_when_it_would_otherwise_strip_to_a_valid_isbn below.
     [InlineData("9-7-8-0-3-0-6-4-0-6-1-5-7", "9780306406157")]
-    // An ISBN-10 whose check digit is X — the case a naive digits-only parser rejects.
+    // An ISBN-10 whose check digit is X: the case a naive digits-only parser rejects.
     [InlineData("043942089X", "9780439420891")]
     [InlineData("0-439-42089-X", "9780439420891")]
     [InlineData("043942089x", "9780439420891")]
@@ -35,7 +35,7 @@ public sealed class IsbnTests
     /// <summary>
     /// The reason canonicalization exists rather than mere validation. Both of these are the
     /// same book, both satisfy their own checksum, and a type that stored them verbatim would
-    /// let the catalogue hold it twice — under a unique index that claims otherwise.
+    /// let the catalogue hold it twice, under a unique index that claims otherwise.
     /// </summary>
     [Fact]
     public void An_isbn_10_and_its_isbn_13_equivalent_are_the_same_book()
@@ -81,7 +81,7 @@ public sealed class IsbnTests
     /// Pins the length bound in <see cref="Isbn.Create"/>, which exists because parsing
     /// allocates a stack buffer sized from the input and the input arrives from a request body.
     /// A large enough value overflows the stack, and a StackOverflowException cannot be caught
-    /// by any handler — the process dies. So an input-validation rule and a denial-of-service
+    /// by any handler: the process dies. So an input-validation rule and a denial-of-service
     /// guard are the same line of code here.
     ///
     /// The input is chosen to fail *only* because of that bound. It is 37 characters of
@@ -90,7 +90,7 @@ public sealed class IsbnTests
     /// be rejected anyway for having neither 10 nor 13 digits, and the test would pass while
     /// proving nothing.
     ///
-    /// It also documents the non-obvious half of the rule — the bound is on the raw input,
+    /// It also documents the non-obvious half of the rule: the bound is on the raw input,
     /// before separators are stripped, because that is what the allocation is sized from.
     /// </summary>
     [Fact]

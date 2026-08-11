@@ -26,7 +26,7 @@ public sealed record Isbn
     /// <summary>
     /// The longest input this type will look at. A fully hyphenated ISBN-13 is 17 characters,
     /// so 32 is generous; the number is not the point. The point is that a bound exists before
-    /// anything is allocated from the input's length — see <see cref="Create"/>.
+    /// anything is allocated from the input's length: see <see cref="Create"/>.
     /// </summary>
     public const int MaxInputLength = 32;
 
@@ -50,7 +50,7 @@ public sealed record Isbn
         }
 
         // This bound has to be here, before StripSeparators, because that method allocates a
-        // stack buffer sized from this string — and the string arrives straight from an HTTP
+        // stack buffer sized from this string, and the string arrives straight from an HTTP
         // request body, so its length is chosen by whoever is calling.
         //
         // Without the check, a large enough value exhausts the stack. StackOverflowException
@@ -61,7 +61,7 @@ public sealed record Isbn
         // It reads like an input-validation rule and it is one. It is also the only thing
         // standing between a public endpoint and a denial of service, which is why it lives in
         // the domain rather than in a request DTO attribute. The attribute exists too, but a
-        // second caller — a seeder, a message consumer, a test — would not go through it.
+        // second caller (a seeder, a message consumer, a test) would not go through it.
         if (input.Length > MaxInputLength)
         {
             return BookErrors.IsbnMalformed(input);
@@ -78,7 +78,7 @@ public sealed record Isbn
     }
 
     /// <summary>
-    /// Rehydrates a value that has already been validated and canonicalized — the ORM
+    /// Rehydrates a value that has already been validated and canonicalized: the ORM
     /// materialization path, and nothing else.
     ///
     /// It bypasses validation on purpose. The alternative, re-running <see cref="Create"/> on
@@ -111,7 +111,7 @@ public sealed record Isbn
 
     /// <summary>
     /// ISBN-10 is valid when the digits weighted 10, 9, ... 1 sum to a multiple of 11. The
-    /// final position may be 'X', meaning ten — which is the whole reason the checksum works
+    /// final position may be 'X', meaning ten, which is the whole reason the checksum works
     /// modulo a prime.
     /// </summary>
     private static Result<Isbn> FromIsbn10(string digits)

@@ -9,7 +9,7 @@ namespace LibraryLoans.Api.Loans;
 /// <summary>
 /// Nullable on purpose. <c>[Required]</c> on a non-nullable <c>Guid</c> is a no-op: the validator
 /// sees <c>Guid.Empty</c> rather than null and passes, so an omitted field would reach the handler
-/// as all zeros and come back as <c>404 book_copy.not_found</c> — a missing field reported as a
+/// as all zeros and come back as <c>404 book_copy.not_found</c>: a missing field reported as a
 /// missing resource, and a different status class from the one a null in the same position
 /// produces. Making them nullable is what lets the attribute mean what it says.
 /// </summary>
@@ -38,8 +38,8 @@ internal static class LoansEndpoints
             // .RequireAuthorization("RequireMember")
             //   Not implemented. Note the consequence while it is not: memberId arrives in the
             //   request body, so with no authenticated caller anyone can borrow as anyone. The
-            //   intended rule — a member may act only where the token's subject matches the
-            //   memberId, while a librarian may act for any member — is specified in
+            //   intended rule (a member may act only where the token's subject matches the
+            //   memberId, while a librarian may act for any member) is specified in
             //   docs/AUTHORIZATION.md. It is deliberately not faked here: an identity check
             //   against a value the caller supplies enforces nothing while appearing to.
             .AddEndpointFilter<ValidationFilter<BorrowCopyRequest>>()
@@ -48,7 +48,7 @@ internal static class LoansEndpoints
 
         loans.MapPost("/{id:guid}/return", ReturnAsync)
             // .RequireAuthorization()
-            //   Takes the loan id and nothing else — see docs/AUTHORIZATION.md. A real library
+            //   Takes the loan id and nothing else: see docs/AUTHORIZATION.md. A real library
             //   accepts a returned book from whoever hands it over, and with no authenticated
             //   caller there is nothing to compare a memberId against anyway.
             .WithName("ReturnLoan")

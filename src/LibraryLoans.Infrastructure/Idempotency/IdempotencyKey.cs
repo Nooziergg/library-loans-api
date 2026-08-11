@@ -6,7 +6,7 @@ namespace LibraryLoans.Infrastructure.Idempotency;
 /// <para>The primary key <i>is</i> the mechanism. Two concurrent requests carrying the same
 /// <c>Idempotency-Key</c> both try to insert this row; PostgreSQL lets exactly one of them win, and
 /// the loser learns from that rejection that it is a duplicate. This is the same technique as the
-/// partial unique index on active loans — the database arbitrates a race the application cannot,
+/// partial unique index on active loans: the database arbitrates a race the application cannot,
 /// because between "does this key exist" and "insert it" there is a gap, and the gap is where the
 /// duplicate charge, the duplicate loan and the duplicate order live.</para>
 ///
@@ -37,7 +37,7 @@ internal sealed class IdempotencyKey
     public string Key { get; }
 
     /// <summary>
-    /// A hash of the request this key was claimed for — method, path and body. Kept so that reusing
+    /// A hash of the request this key was claimed for: method, path and body. Kept so that reusing
     /// one key for two different requests is detected rather than served the wrong answer.
     ///
     /// A hash rather than the request itself: it is a fixed size whatever the payload, and it means
@@ -56,7 +56,7 @@ internal sealed class IdempotencyKey
     public string? ContentType { get; }
 
     /// <summary>
-    /// The allowlisted response headers, as a JSON object — <c>Location</c> above all, without which
+    /// The allowlisted response headers, as a JSON object: <c>Location</c> above all, without which
     /// a replayed <c>201</c> tells the client something was created and refuses to say where.
     /// </summary>
     public string? Headers { get; }

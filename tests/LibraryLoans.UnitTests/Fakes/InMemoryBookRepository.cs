@@ -17,7 +17,7 @@ internal sealed class InMemoryBookRepository : IBookRepository
     private readonly List<Book> _added = [];
 
     /// <summary>
-    /// Only what the code under test staged — deliberately not including books put there by
+    /// Only what the code under test staged: deliberately not including books put there by
     /// <see cref="Seed"/>. Counting both would make <c>Assert.Single(Added)</c> pass in a test
     /// that seeded one book and added none, which is the exact assertion a handler that forgot
     /// to save should fail.
@@ -30,7 +30,7 @@ internal sealed class InMemoryBookRepository : IBookRepository
     public Task<Book?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
         Task.FromResult(_preexisting.Concat(_added).FirstOrDefault(book => book.Id == id));
 
-    /// <summary>Same objects as <see cref="GetByIdAsync"/> — a fake has no change tracker to model.</summary>
+    /// <summary>Same objects as <see cref="GetByIdAsync"/>: a fake has no change tracker to model.</summary>
     public Task<Book?> FindForUpdateAsync(Guid id, CancellationToken cancellationToken) =>
         GetByIdAsync(id, cancellationToken);
 

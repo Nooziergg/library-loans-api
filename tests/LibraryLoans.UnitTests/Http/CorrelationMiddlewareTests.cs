@@ -9,7 +9,7 @@ namespace LibraryLoans.UnitTests.Http;
 /// identifier to the caller, accepting one they chose, and refusing to repeat one that is not safe
 /// to repeat.
 ///
-/// <para>There are deliberately no tests here for the log line itself — no assertion that a status
+/// <para>There are deliberately no tests here for the log line itself: no assertion that a status
 /// or a duration is recorded. That is framework behaviour now, and a test asserting it would be
 /// testing ASP.NET Core rather than this repository.</para>
 /// </summary>
@@ -51,7 +51,7 @@ public sealed class CorrelationMiddlewareTests
 
     /// <summary>
     /// The scope is the one thing here that could be pure duplication, so it is asserted not to
-    /// happen. With no identifier supplied, the value is the trace id — which the framework has
+    /// happen. With no identifier supplied, the value is the trace id, which the framework has
     /// already attached to every line of the request as <c>TraceId</c>. Repeating it under a second
     /// name would widen the log without adding anything to it.
     /// </summary>
@@ -64,13 +64,13 @@ public sealed class CorrelationMiddlewareTests
 
         Assert.Null(logger.Scope("CorrelationId"));
 
-        // The caller is still given one — the header does not depend on the scope.
+        // The caller is still given one: the header does not depend on the scope.
         Assert.NotEmpty(logger.HttpContextHeader);
     }
 
     /// <summary>
     /// The header is attacker-controlled. The JSON formatter escapes what it writes, so a newline
-    /// cannot forge a log entry — but an unbounded or unconstrained value would still be the
+    /// cannot forge a log entry, but an unbounded or unconstrained value would still be the
     /// caller's text appearing in our records, and echoed back in our response.
     /// </summary>
     [Theory]
@@ -90,7 +90,7 @@ public sealed class CorrelationMiddlewareTests
         await Invoke(logger, httpContext);
 
         // Replaced, not rejected: the request still succeeded, and the caller still got an
-        // identifier — just not the one they tried to write into our logs.
+        // identifier: just not the one they tried to write into our logs.
         Assert.NotEqual(
             supplied,
             httpContext.Response.Headers[CorrelationMiddleware.CorrelationIdHeader].ToString());
@@ -133,7 +133,7 @@ public sealed class CorrelationMiddlewareTests
     }
 
     /// <summary>
-    /// Records the scopes that were open, rather than the entries written — this middleware writes
+    /// Records the scopes that were open, rather than the entries written: this middleware writes
     /// none of its own. Hand-written rather than mocked, for the same reason the rest of this repo
     /// hand-writes its mapping: it is a dozen lines and the assertions read against captured facts.
     /// </summary>

@@ -106,7 +106,7 @@ public sealed class AuditTrailTests : IAsyncLifetime
         Assert.Equal("Created", row.Action);
         Assert.Equal(IdFrom(created), row.EntityId);
 
-        // Honest rather than flattering. Nothing authenticates the caller, so the trail says so —
+        // Honest rather than flattering. Nothing authenticates the caller, so the trail says so:
         // see IAuditContext.Actor.
         Assert.Equal("anonymous", row.Actor);
 
@@ -179,7 +179,7 @@ public sealed class AuditTrailTests : IAsyncLifetime
     ///
     /// The second create loses to the unique index on ISBN and is reported as a 409. Its audit row
     /// was already staged in the change tracker when that happened, and it is rolled back with the
-    /// insert it described — so the trail records the write that happened and not the one that was
+    /// insert it described, so the trail records the write that happened and not the one that was
     /// refused. An audit written after the commit, or to a separate store, would have recorded both
     /// and left the table claiming a book was created twice.
     /// </summary>

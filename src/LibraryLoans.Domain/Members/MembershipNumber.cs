@@ -21,7 +21,7 @@ public sealed record MembershipNumber
     /// This format is fixed-length, which is what lets <see cref="MaxInputLength"/> be a separate
     /// and much larger number: the parser requires the trimmed value to be exactly this many
     /// characters, so no accepted value can be wider than the column however generous the input cap
-    /// is. <see cref="Copies.Barcode"/> cannot do that — a barcode's length is not fixed, so there
+    /// is. <see cref="Copies.Barcode"/> cannot do that: a barcode's length is not fixed, so there
     /// one constant has to serve as both the input bound and the column width.
     ///
     /// The thing to avoid in either case is a value object that accepts more characters than the
@@ -32,7 +32,7 @@ public sealed record MembershipNumber
 
     /// <summary>
     /// The bound on raw input, before trimming. Its only job is to stop an allocation being sized by
-    /// a caller — it is not a business rule, which is why it is comfortably larger than
+    /// a caller. It is not a business rule, which is why it is comfortably larger than
     /// <see cref="Length"/> rather than tuned to some guess about how much whitespace is reasonable.
     ///
     /// Safe to exceed the column width here, unlike the barcode case, because this format is fixed

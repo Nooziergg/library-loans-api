@@ -7,7 +7,7 @@ namespace LibraryLoans.UnitTests.Fakes;
 /// Counts commits, and can be told to fail.
 ///
 /// The count matters more than it looks. A handler that builds a valid aggregate, stages it and
-/// then forgets to save returns a perfectly good 201 while writing nothing — and every
+/// then forgets to save returns a perfectly good 201 while writing nothing, and every
 /// assertion about the returned response still passes. Only the commit count catches that, and
 /// in this project the integration test that would otherwise catch it cannot run yet.
 /// </summary>

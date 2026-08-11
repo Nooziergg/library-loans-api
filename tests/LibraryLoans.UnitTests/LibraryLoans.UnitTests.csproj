@@ -18,7 +18,7 @@
   <!--
     Domain and Application are the subjects of this suite. The Api reference exists so the
     request-validation filter, the domain-error-to-status mapping and the exception handler can
-    be tested directly, in-process, with no server and no database — they are pure functions
+    be tested directly, in-process, with no server and no database. They are pure functions
     over their inputs, and routing them through an integration test would be slower and prove
     less.
 

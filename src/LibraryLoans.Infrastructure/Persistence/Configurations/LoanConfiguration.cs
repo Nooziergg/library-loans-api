@@ -14,7 +14,7 @@ namespace LibraryLoans.Infrastructure.Persistence.Configurations;
 internal sealed class LoanConfiguration : IEntityTypeConfiguration<Loan>
 {
     /// <summary>
-    /// The column name is needed twice — once to map the property, once inside the raw SQL of the
+    /// The column name is needed twice: once to map the property, once inside the raw SQL of the
     /// index filter, which the compiler cannot check against the model. A constant means a rename
     /// cannot leave the filter pointing at a column that no longer exists.
     /// </summary>
@@ -26,7 +26,7 @@ internal sealed class LoanConfiguration : IEntityTypeConfiguration<Loan>
     {
         builder.ToTable(
             "loans",
-            // Raw SQL again, so the column names come from the same constants the mapping uses —
+            // Raw SQL again, so the column names come from the same constants the mapping uses:
             // the compiler cannot check either string against the model.
             table => table.HasCheckConstraint(
                 DatabaseConstraints.LoansDueAfterLoanedCheck,
@@ -61,14 +61,14 @@ internal sealed class LoanConfiguration : IEntityTypeConfiguration<Loan>
 
         // Derived from ReturnedAt. Ignored explicitly rather than relying on EF's conventions for
         // get-only properties, because an is_active column sitting beside returned_at would be a
-        // second answer to a question the first column already settles — precisely the stored
+        // second answer to a question the first column already settles: precisely the stored
         // derived state this design argues against. The generated migration is read to confirm it.
         builder.Ignore(loan => loan.IsActive);
 
-        // ─────────────────────────────────────────────────────────────────────────────────────
+        // -------------------------------------------------------------------------------------
         //  The invariant, enforced where it cannot be raced.
         //
-        //  The filter is not an optimisation — it is the rule. Without it this reads
+        //  The filter is not an optimisation. It is the rule. Without it this reads
         //  "a copy may appear in the loans table at most once", meaning a returned book could
         //  never be borrowed again. With it, the constraint applies only to rows that represent
         //  a loan still outstanding, which is a *temporal* invariant expressed as a *static*
@@ -78,7 +78,7 @@ internal sealed class LoanConfiguration : IEntityTypeConfiguration<Loan>
         //  It also arbitrates a race the application cannot: a return running concurrently with a
         //  re-borrow of the same copy. The new row cannot land while the old one still has a null
         //  returned_at, whichever order the two statements arrive in.
-        // ─────────────────────────────────────────────────────────────────────────────────────
+        // -------------------------------------------------------------------------------------
         builder.HasIndex(loan => loan.BookCopyId)
             .IsUnique()
             .HasFilter($"{ReturnedAtColumn} IS NULL")
@@ -95,7 +95,7 @@ internal sealed class LoanConfiguration : IEntityTypeConfiguration<Loan>
         // adding the navigation, which invites loading a graph on every read.
         //
         // Restrict, not the Cascade that EF Core defaults required references to. Deleting a member
-        // must not silently erase their loan history — that is a records question before it is a
+        // must not silently erase their loan history. That is a records question before it is a
         // referential-integrity one, and the answer a librarian expects is a refusal.
         builder.HasOne<BookCopy>()
             .WithMany()

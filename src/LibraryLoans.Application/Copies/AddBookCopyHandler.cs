@@ -24,7 +24,7 @@ public sealed class AddBookCopyHandler(
         }
 
         // Loaded rather than trusted. BookCopy.Add takes the aggregate as proof the title exists, so
-        // a caller cannot attach a copy to a BookId it invented — the foreign key would catch that
+        // a caller cannot attach a copy to a BookId it invented: the foreign key would catch that
         // too, but as a 500 rather than a described 404.
         var book = await books.GetByIdAsync(command.BookId, cancellationToken);
         if (book is null)

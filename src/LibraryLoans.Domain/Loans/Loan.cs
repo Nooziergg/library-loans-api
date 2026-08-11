@@ -56,13 +56,13 @@ public sealed class Loan
     ///
     /// Expressed as an expression rather than a method, and that is the whole point. A method body
     /// cannot be translated into SQL, so a query filtering on "overdue" would have to restate
-    /// <c>ReturnedAt == null &amp;&amp; DueAt &lt; now</c> in its <c>Where</c> clause — the same rule
+    /// <c>ReturnedAt == null &amp;&amp; DueAt &lt; now</c> in its <c>Where</c> clause: the same rule
     /// written twice, in two languages, drifting the day one of them changes. Handing the database
     /// this expression means the rule is defined once, here, in the aggregate that owns it.
     ///
     /// <paramref name="now"/> is a parameter rather than a captured constant so the provider renders
     /// it as a query parameter. Baking the instant into the tree would produce a different SQL
-    /// string on every request and a new entry in the query cache each time — unbounded growth
+    /// string on every request and a new entry in the query cache each time: unbounded growth
     /// driven by the clock.
     ///
     /// Overdue remains derived, never stored: a column would be wrong for the whole interval
@@ -76,14 +76,14 @@ public sealed class Loan
     /// borrowing is allowed is in one place and cannot be bypassed by a caller that forgets.
     ///
     /// Takes the <paramref name="copy"/> and <paramref name="member"/> aggregates rather than their
-    /// ids so the guards read as prose — <c>if (!member.CanBorrow)</c> — and so a caller cannot
+    /// ids so the guards read as prose, <c>if (!member.CanBorrow)</c>, and so a caller cannot
     /// invent an id it never loaded. It stores only their ids.
     ///
     /// The two facts it cannot determine for itself are passed in, because an aggregate does not
     /// query: how many active loans the member holds, and whether this copy is already out.
     /// </summary>
     /// <param name="copyHasActiveLoan">
-    /// True when the copy is currently out. Named so its polarity is unmistakable — the port that
+    /// True when the copy is currently out. Named so its polarity is unmistakable: the port that
     /// answers it is called <c>HasActiveLoanForCopyAsync</c> for the same reason.
     /// </param>
     /// <param name="now">
@@ -104,7 +104,7 @@ public sealed class Loan
             return LoanErrors.MemberSuspended();
         }
 
-        // This limit can be raced — two concurrent borrows can both read a count of four, and the
+        // This limit can be raced: two concurrent borrows can both read a count of four, and the
         // member ends up holding six. That is accepted, and the asymmetry with the check below is
         // the interesting part of this design: a member briefly over their limit is a policy
         // annoyance that a librarian can unwind, while the same physical book promised to two
@@ -137,12 +137,12 @@ public sealed class Loan
     /// Records the copy coming back.
     ///
     /// Returns the non-generic <see cref="Result"/> because it mutates the loan the caller already
-    /// holds — <c>Result&lt;Loan&gt;</c> would imply a new aggregate had been produced.
+    /// holds: <c>Result&lt;Loan&gt;</c> would imply a new aggregate had been produced.
     ///
     /// A second return is a <see cref="DomainErrorKind.Conflict"/>, not a silent success. Two
     /// concurrent returns can both pass this guard and both write, which is accepted: unlike the
     /// borrow race there is no token or index that could arbitrate it, and the outcome is
-    /// idempotent in substance — the loan ends up returned either way, with the two candidate
+    /// idempotent in substance: the loan ends up returned either way, with the two candidate
     /// timestamps differing by microseconds. Nothing is promised twice, which is the difference
     /// that matters.
     ///

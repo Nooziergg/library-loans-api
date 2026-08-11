@@ -29,7 +29,7 @@ public sealed class LibraryDbContext(DbContextOptions<LibraryDbContext> options)
         // it is part of the model, which means the migration creates it and the snapshot records
         // it. Note for anyone deploying elsewhere: CREATE EXTENSION needs a role with rights to it.
         // Managed PostgreSQL grants pg_trgm to its admin role, but a locked-down application role
-        // would fail this migration at startup — one more reason production applies migrations as a
+        // would fail this migration at startup: one more reason production applies migrations as a
         // separate deployment step rather than on boot.
         modelBuilder.HasPostgresExtension("pg_trgm");
 

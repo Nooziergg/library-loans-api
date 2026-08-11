@@ -11,27 +11,27 @@ namespace LibraryLoans.Infrastructure.Idempotency;
 /// Idempotency keys in the same PostgreSQL the rest of the service uses.
 ///
 /// <para><b>Every write here is raw SQL, on purpose, and it is the most important thing in this
-/// file.</b> The obvious implementation adds an entity and calls <c>SaveChanges</c> — but this store
+/// file.</b> The obvious implementation adds an entity and calls <c>SaveChanges</c>, but this store
 /// shares the request's scoped <c>DbContext</c>, and <c>SaveChanges</c> flushes <i>everything</i>
 /// pending on it. The middleware that calls this runs before and after the endpoint, so a flush at
 /// either point could commit a handler's half-built unit of work, or commit it a second time. Going
 /// straight to SQL means these three statements touch exactly the rows they name and the change
 /// tracker is never consulted. A useful side effect: the audit interceptor never sees them either,
-/// which is right — an idempotency key is transport plumbing, not a fact about the library.</para>
+/// which is right: an idempotency key is transport plumbing, not a fact about the library.</para>
 ///
 /// <para><b>Deliberately not in the caller's transaction.</b> The claim has to be visible to a
 /// concurrent duplicate <i>while</i> the original is still working, so it cannot wait for the
 /// business transaction to commit. The cost is stated rather than hidden: if the process dies
 /// between the business commit and <see cref="CompleteAsync"/>, the key is left claimed with no
 /// response, and a retry is told the request is still in progress. That is the safe direction to
-/// fail — the alternative is a retry re-running a change that already committed — but it does mean a
+/// fail, the alternative is a retry re-running a change that already committed, but it does mean a
 /// stuck key needs the retention job to clear it.</para>
 /// </summary>
 internal sealed class EfIdempotencyStore(LibraryDbContext dbContext, TimeProvider timeProvider) : IIdempotencyStore
 {
     /// <summary>
     /// <c>ON CONFLICT DO NOTHING</c> rather than catching a unique violation. Same arbitration by the
-    /// same index, but it reports the loss as "zero rows affected" instead of as an exception — so
+    /// same index, but it reports the loss as "zero rows affected" instead of as an exception, so
     /// the ordinary, expected case of a duplicate retry costs no exception and, more importantly,
     /// does not poison the ambient transaction the way a raised error would.
     /// </summary>
@@ -86,7 +86,7 @@ internal sealed class EfIdempotencyStore(LibraryDbContext dbContext, TimeProvide
 
         if (existing is null)
         {
-            // The row was released between the insert and this read — the original request failed
+            // The row was released between the insert and this read: the original request failed
             // with a server fault in that window. Reporting "in progress" asks the client to retry,
             // which is correct and, at one lost round trip, cheaper than the alternatives: claiming
             // it here would need a second insert that can lose the same race again.
@@ -132,8 +132,8 @@ internal sealed class EfIdempotencyStore(LibraryDbContext dbContext, TimeProvide
     /// <summary>
     /// A stored headers document that cannot be read is not worth failing a retry over: the status
     /// and the body are the substance, and answering with them minus a <c>Location</c> beats
-    /// answering with a 500. It is logged nowhere because it cannot happen — the column is jsonb, so
-    /// PostgreSQL rejected anything malformed at write time — and a catch that can only fire if the
+    /// answering with a 500. It is logged nowhere because it cannot happen (the column is jsonb, so
+    /// PostgreSQL rejected anything malformed at write time), and a catch that can only fire if the
     /// database has been edited by hand should not pretend otherwise.
     /// </summary>
     private static IReadOnlyDictionary<string, string> Deserialize(string? headers) =>

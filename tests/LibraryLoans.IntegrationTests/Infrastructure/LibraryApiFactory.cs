@@ -9,7 +9,7 @@ namespace LibraryLoans.IntegrationTests.Infrastructure;
 ///
 /// Note what this does not do: it does not remove the registered <c>DbContext</c> and register
 /// a different one. Overriding configuration and letting <c>AddInfrastructure</c> run exactly as
-/// it does in production means the composition root itself is under test — retry policy,
+/// it does in production means the composition root itself is under test: retry policy,
 /// connection handling, service lifetimes and all. Swapping the registration would produce a
 /// suite that passes against wiring the deployed application never uses, which is the failure
 /// mode where integration tests quietly stop testing anything.
@@ -21,7 +21,7 @@ namespace LibraryLoans.IntegrationTests.Infrastructure;
 /// break them in a way that points at the wrong place: the seeded catalogue contains sixty titles
 /// with their own ISBNs, barcodes and membership numbers, and a test posting its own fixture data
 /// would collide on a unique index. The seeder keeps its natural keys clear of the ranges the tests
-/// use — <c>9781…</c> ISBNs, <c>LIB-</c> barcodes, <c>M9…</c> members — but the cleanest guarantee
+/// use (<c>9781...</c> ISBNs, <c>LIB-</c> barcodes, <c>M9...</c> members), but the cleanest guarantee
 /// is that classes which do not need the seed never see it.
 /// </param>
 public sealed class LibraryApiFactory(string connectionString, bool seed = false)

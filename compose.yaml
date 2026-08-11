@@ -1,5 +1,5 @@
 # Brings up the whole system with one command: `docker compose up`.
-# Works unchanged under Podman (`podman compose up`) — no Docker-only syntax here.
+# Works unchanged under Podman (`podman compose up`): no Docker-only syntax here.
 #
 # Every credential below is a DEVELOPMENT value, committed on purpose so the project runs
 # out of the box. Production guidance is in the README.
@@ -13,8 +13,8 @@ services:
       POSTGRES_USER: library
       POSTGRES_PASSWORD: library_dev_password
     ports:
-      # Deliberately NOT the default 5432. A reviewer with PostgreSQL already installed — which is
-      # most developer machines — would otherwise get a port-allocation failure on the very first
+      # Deliberately NOT the default 5432. A reviewer with PostgreSQL already installed, which is
+      # most developer machines, would otherwise get a port-allocation failure on the very first
       # command in the README, and nothing after that matters.
       #
       # The API reaches the database over the compose network and does not use this at all; it is
@@ -46,7 +46,7 @@ services:
       ConnectionStrings__Default: "Host=db;Port=5432;Database=library;Username=library;Password=library_dev_password"
       # Migrations are applied on startup for convenience on a clean machine. The README explains
       # why a production deployment would not do this. Only flags the application actually reads
-      # appear here — a flag nothing consumes is worse than no flag, because it reads as
+      # appear here: a flag nothing consumes is worse than no flag, because it reads as
       # configuration that works.
       MIGRATE_ON_STARTUP: "true"
       # Fills an empty database with a working library so there is something to explore

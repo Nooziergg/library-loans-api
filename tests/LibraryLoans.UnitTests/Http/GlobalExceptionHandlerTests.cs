@@ -8,7 +8,7 @@ public sealed class GlobalExceptionHandlerTests
 {
     /// <summary>
     /// A client hanging up is ordinary traffic, not a fault. If this regresses, the symptom is
-    /// not a broken response — it is an error rate that tracks user behaviour, and an on-call
+    /// not a broken response. It is an error rate that tracks user behaviour, and an on-call
     /// rotation that learns to ignore the alert.
     /// </summary>
     [Fact]
@@ -58,7 +58,7 @@ public sealed class GlobalExceptionHandlerTests
     /// A body the framework could not read is the caller's mistake, not a server fault.
     ///
     /// This has to be handled here rather than by the validation filter, because binding fails
-    /// before any endpoint filter runs — so the path that produces every other 400 never sees these.
+    /// before any endpoint filter runs, so the path that produces every other 400 never sees these.
     /// Answering 500 would tell a caller their valid-looking typo broke the server, and would file
     /// it in the error rate as though it had.
     /// </summary>
@@ -93,7 +93,7 @@ public sealed class GlobalExceptionHandlerTests
         Assert.Equal(StatusCodes.Status413PayloadTooLarge, httpContext.Response.StatusCode);
     }
 
-    /// <summary>The parser's own wording never reaches the caller — byte offsets and JSON paths included.</summary>
+    /// <summary>The parser's own wording never reaches the caller: byte offsets and JSON paths included.</summary>
     [Fact]
     public async Task Does_not_leak_the_parser_message_for_an_unreadable_body()
     {
@@ -130,7 +130,7 @@ public sealed class GlobalExceptionHandlerTests
 
         // Asserted by equality, not by substring. A "does not contain 'sa'" check against a
         // fixed title proves nothing and would start failing the day someone writes the word
-        // "unexpected fault, see logs" — the point is that the response is a constant, so
+        // "unexpected fault, see logs": the point is that the response is a constant, so
         // nothing from the exception can reach it by any route.
         Assert.Equal("Unexpected error.", written.Title);
         Assert.Equal(

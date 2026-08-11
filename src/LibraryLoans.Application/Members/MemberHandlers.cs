@@ -60,7 +60,7 @@ public sealed class SuspendMemberHandler(
             return saved.Error;
         }
 
-        // The identifier and nothing else — a member's name, email and membership number are
+        // The identifier and nothing else: a member's name, email and membership number are
         // personal data, and a structured log field outlives the request.
         logger.LogInformation("Suspended member {MemberId}", member.Id);
 

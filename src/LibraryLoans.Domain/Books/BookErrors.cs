@@ -46,7 +46,7 @@ public static class BookErrors
             ? MaxEchoedInputLength - 1
             : MaxEchoedInputLength;
 
-        return string.Concat(input.AsSpan(0, cut), "…");
+        return string.Concat(input.AsSpan(0, cut), "...");
     }
 
     private const int MaxEchoedInputLength = 20;
@@ -76,7 +76,7 @@ public static class BookErrors
             $"A published year must be between {Book.EarliestPublishedYear} and {latestAllowed}.");
 
     /// <summary>
-    /// Deletion refused because a copy is out. <b>Retryable</b> — the same request will succeed once
+    /// Deletion refused because a copy is out. <b>Retryable</b>: the same request will succeed once
     /// the copy comes back, which is why it is a separate code from
     /// <see cref="HasLoanHistory"/>. Collapsing the two into one message would lose the only part a
     /// caller can act on.

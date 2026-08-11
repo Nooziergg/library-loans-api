@@ -8,10 +8,10 @@
 
 That is the whole requirement. No .NET SDK, no PostgreSQL installation, no cloud account, no
 configuration to edit. `docker compose up` builds the API, starts PostgreSQL, waits for it to be
-healthy, applies migrations, seeds a working library of 330 rows, and serves on port 8080 — so the
+healthy, applies migrations, seeds a working library of 330 rows, and serves on port 8080, so the
 first request you make has something to return.
 
-Podman works — the compose file avoids Docker-only syntax. Run `podman machine start` first.
+Podman works: the compose file avoids Docker-only syntax. Run `podman machine start` first.
 
 The database is published on host port **55432**, deliberately not the default 5432, so it cannot
 collide with a PostgreSQL you already have running. Connect a tool to it there, or use psql inside
@@ -30,7 +30,7 @@ dotnet test tests/LibraryLoans.UnitTests
 ```
 
 The integration suite additionally needs a **running container runtime**. It uses Testcontainers to
-start a disposable PostgreSQL on a random port, migrate it, and destroy it when the run ends — which
+start a disposable PostgreSQL on a random port, migrate it, and destroy it when the run ends, which
 is how the suite satisfies the requirement that tests never touch a development database. There is
 nothing to set up and nothing to clean up:
 
@@ -52,7 +52,7 @@ That points Testcontainers at Podman's socket rather than a Docker daemon that i
 You do **not** need `TESTCONTAINERS_RYUK_DISABLED`. The suite sets it in
 `tests/LibraryLoans.IntegrationTests/Infrastructure/TestRunConfiguration.cs`, with the reasoning in
 that file: Ryuk is the sidecar Testcontainers normally starts to reap leftovers, and it works by
-mounting the Docker socket — handing a container control of the daemon for the whole run, to cover
+mounting the Docker socket: handing a container control of the daemon for the whole run, to cover
 a case that only arises when a run crashes. The fixture owns one container and disposes it itself.
 Disabling it in code also removes the most common first failure under rootless Podman, where Ryuk
 cannot start and the error looks like an unrelated timeout.

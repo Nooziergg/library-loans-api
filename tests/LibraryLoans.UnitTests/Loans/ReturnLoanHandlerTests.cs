@@ -14,7 +14,7 @@ namespace LibraryLoans.UnitTests.Loans;
 /// The first test here is the one that earns the file. This codebase asserts, in its architecture
 /// documentation and in the reasoning behind every date in the domain, that time is injected and
 /// <c>DateTime.UtcNow</c> appears nowhere. Before this test existed, replacing the handler's
-/// <c>timeProvider.GetUtcNow()</c> with <c>DateTime.UtcNow</c> left the entire suite green — the
+/// <c>timeProvider.GetUtcNow()</c> with <c>DateTime.UtcNow</c> left the entire suite green: the
 /// return would still be recorded, the integration tests would still pass, and the only claim that
 /// broke would be one nothing checked.
 /// </summary>

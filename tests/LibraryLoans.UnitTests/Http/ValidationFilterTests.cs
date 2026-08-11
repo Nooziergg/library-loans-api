@@ -94,7 +94,7 @@ public sealed class ValidationFilterTests
 
     /// <summary>
     /// The finding this test exists for. The obvious implementation looks up the argument and
-    /// falls through to <c>next()</c> when it is not found — which means a filter attached to
+    /// falls through to <c>next()</c> when it is not found, which means a filter attached to
     /// the wrong endpoint silently validates nothing and every request sails past. A validation
     /// control that disables itself quietly is worse than no control, because the tests still
     /// pass. It must fail loudly instead, on the first request.

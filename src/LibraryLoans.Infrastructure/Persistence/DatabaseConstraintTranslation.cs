@@ -11,7 +11,7 @@ namespace LibraryLoans.Infrastructure.Persistence;
 ///
 /// Matching is on the <i>constraint name</i>, never on the SQL state alone. Every unique index in
 /// the database raises the same 23505 and every foreign key the same 23503, so a state-only match
-/// would report an unrelated collision as a duplicate ISBN — a wrong answer that looks like a right
+/// would report an unrelated collision as a duplicate ISBN: a wrong answer that looks like a right
 /// one. An unrecognised constraint returns null and the caller rethrows: a violation nobody has
 /// mapped is a bug to surface, not a 409 to invent.
 ///
@@ -22,7 +22,7 @@ namespace LibraryLoans.Infrastructure.Persistence;
 internal static class DatabaseConstraintTranslation
 {
     /// <summary>
-    /// Unique violations — SQLSTATE 23505. Each of these has a matching pre-check in a handler, and
+    /// Unique violations: SQLSTATE 23505. Each of these has a matching pre-check in a handler, and
     /// the pair must produce the identical error so a caller cannot tell which layer noticed.
     /// </summary>
     public static DomainError? TranslateUniqueViolation(string? constraintName) => constraintName switch
@@ -38,7 +38,7 @@ internal static class DatabaseConstraintTranslation
         DatabaseConstraints.MembersMembershipNumberUniqueIndex => MemberErrors.DuplicateMembershipNumber(),
 
         // Note what is deliberately absent: ck_loans_due_after_loaned. It raises SQLSTATE 23514
-        // rather than 23505, so it never reaches this switch — and it should not be given an arm if
+        // rather than 23505, so it never reaches this switch, and it should not be given an arm if
         // it ever does. The domain computes the due date, so that constraint is unreachable through
         // any code path; a violation means something wrote to the database directly, and turning
         // that into a tidy 409 would silence an alarm worth hearing.
@@ -46,12 +46,12 @@ internal static class DatabaseConstraintTranslation
     };
 
     /// <summary>
-    /// Foreign-key violations — SQLSTATE 23503.
+    /// Foreign-key violations: SQLSTATE 23503.
     ///
     /// Only one is reachable: deleting a book whose copies are referenced by a loan. The handler
     /// checks for that first and gives a precise answer, so arriving here means a borrow landed
     /// between the check and the delete. That is a race, and the honest response is the retryable
-    /// conflict — try again once the copy is back — rather than the permanent one, because a loan
+    /// conflict, try again once the copy is back, rather than the permanent one, because a loan
     /// created microseconds ago is by definition still outstanding.
     /// </summary>
     public static DomainError? TranslateForeignKeyViolation(string? constraintName) => constraintName switch
@@ -59,8 +59,8 @@ internal static class DatabaseConstraintTranslation
         DatabaseConstraints.LoansBookCopyForeignKey => BookErrors.CopyOnLoan(),
 
         // Reachable the same way: a copy added between the delete handler reading the title's copies
-        // and writing, so the book delete finds a copy it never loaded. Also retryable — the caller
-        // is deleting a title someone else is still stocking — and unmapped it would be a 500.
+        // and writing, so the book delete finds a copy it never loaded. Also retryable, the caller
+        // is deleting a title someone else is still stocking, and unmapped it would be a 500.
         DatabaseConstraints.BookCopiesBookForeignKey => BookErrors.CopiesChangedDuringDelete(),
 
         _ => null,

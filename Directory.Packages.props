@@ -6,7 +6,7 @@
     The project files argue that versions are pinned exactly so the build is reproducible and a
     compromised release cannot be picked up silently. That argument is weaker when the same
     version string is repeated across five project files, because the failure mode is one of
-    them being missed during an upgrade — which is how a solution ends up loading two versions
+    them being missed during an upgrade, which is how a solution ends up loading two versions
     of the same assembly. Central package management is the first-party mechanism for the
     position this repo already takes.
 
@@ -39,7 +39,7 @@
     package has not moved.
 
     Because CentralPackageTransitivePinningEnabled is on, naming a version here raises the
-    transitive to it without needing a PackageReference in any project — which is precisely the
+    transitive to it without needing a PackageReference in any project, which is precisely the
     situation that feature exists for. Kept on the 2.x line so the parent's expectations hold.
 
     This project does not parse untrusted OpenAPI documents, so the practical exposure is close

@@ -4,7 +4,7 @@ namespace LibraryLoans.Domain.Copies;
 
 /// <summary>
 /// Every failure relating to a physical copy, defined once. As with books and members, the
-/// duplicate-barcode error has two detection sites — the pre-check and the unique index — and both
+/// duplicate-barcode error has two detection sites, the pre-check and the unique index, and both
 /// must produce this identical value.
 /// </summary>
 public static class BookCopyErrors
@@ -33,5 +33,5 @@ public static class BookCopyErrors
     private static string Echo(string input) =>
         input.Length <= MaxEchoedInputLength
             ? input
-            : string.Concat(input.AsSpan(0, MaxEchoedInputLength), "…");
+            : string.Concat(input.AsSpan(0, MaxEchoedInputLength), "...");
 }

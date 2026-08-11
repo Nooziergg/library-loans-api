@@ -13,7 +13,7 @@ internal sealed class LoanRepository(LibraryDbContext dbContext) : ILoanReposito
 
     /// <summary>
     /// Whether any copy of a title is currently out. Joins through copies rather than denormalising
-    /// a book id onto loans — a loan is against a copy, and adding the title to it would create a
+    /// a book id onto loans: a loan is against a copy, and adding the title to it would create a
     /// second place the relationship is recorded.
     /// </summary>
     public Task<bool> HasActiveLoanForBookAsync(Guid bookId, CancellationToken cancellationToken) =>
@@ -40,7 +40,7 @@ internal sealed class LoanRepository(LibraryDbContext dbContext) : ILoanReposito
     /// <summary>
     /// The one deliberately tracked read in this codebase. Returning a loan is a write that starts
     /// with a read, so the change tracker has to be holding the entity when
-    /// <c>SaveChangesAsync</c> runs — with <c>AsNoTracking()</c> here, <c>Loan.Return</c> would
+    /// <c>SaveChangesAsync</c> runs, with <c>AsNoTracking()</c> here, <c>Loan.Return</c> would
     /// mutate an object nothing is watching and the endpoint would report success having written
     /// nothing at all.
     /// </summary>

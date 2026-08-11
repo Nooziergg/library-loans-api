@@ -14,7 +14,7 @@ namespace LibraryLoans.IntegrationTests.Observability;
 /// went wrong.
 ///
 /// The header name is written out rather than referenced from the API assembly on purpose. It is a
-/// wire contract — a caller quoting an identifier back to support has no access to our constants —
+/// wire contract, a caller quoting an identifier back to support has no access to our constants,
 /// so renaming the constant should fail this test rather than silently follow it.
 /// </summary>
 [Collection(DatabaseCollection.Name)]
@@ -23,7 +23,7 @@ public sealed class RequestCorrelationTests(PostgresFixture postgres)
     private const string CorrelationIdHeader = "X-Correlation-Id";
 
     [Theory]
-    // A route that exists, one that reads from the database, and one that does not exist at all —
+    // A route that exists, one that reads from the database, and one that does not exist at all:
     // the last is answered by routing before any endpoint runs.
     [InlineData("/health/live")]
     [InlineData("/api/v1/books")]
@@ -59,7 +59,7 @@ public sealed class RequestCorrelationTests(PostgresFixture postgres)
     /// <summary>
     /// The loop that makes the identifier worth having. A caller looking at a failure can read one
     /// string out of the body they already have, and it is the same string every log line for that
-    /// request was written under — so a support report resolves to a grep rather than to a timestamp
+    /// request was written under, so a support report resolves to a grep rather than to a timestamp
     /// and a guess. A header alone would not do: clients routinely surface an error body and almost
     /// never surface response headers.
     /// </summary>
@@ -82,7 +82,7 @@ public sealed class RequestCorrelationTests(PostgresFixture postgres)
     /// <summary>
     /// An identifier that fails its own rules is replaced, not rejected. The header is a logging
     /// convenience, and refusing the request over it would turn that convenience into a new way to
-    /// fail — while echoing it unchecked would let a caller write arbitrary text into our records.
+    /// fail, while echoing it unchecked would let a caller write arbitrary text into our records.
     /// </summary>
     [Fact]
     public async Task Replaces_an_identifier_that_is_not_well_formed_without_failing_the_request()

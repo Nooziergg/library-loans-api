@@ -12,14 +12,14 @@ namespace LibraryLoans.Infrastructure.Auditing;
 /// <para><b>Why an interceptor and not a line in each handler.</b> An audit trail is only worth
 /// having if it is complete, and "every handler remembers to call the audit service" is a rule that
 /// holds until the fifteenth handler is written under deadline pressure. The gap it leaves is
-/// invisible — nothing fails, a row simply has no history — and it is discovered during the incident
+/// invisible (nothing fails, a row simply has no history), and it is discovered during the incident
 /// that needed it. Hanging the trail off <c>SaveChanges</c> inverts that: a change made through the
 /// change tracker cannot reach the database without passing through here, so a new aggregate is
 /// audited on the day it is added and nobody has to remember anything.</para>
 ///
 /// <para><b>The exact boundary, because "cannot reach the database" would be a lie.</b> SQL issued
 /// around the change tracker is not seen by this interceptor, and the repository already contains
-/// one deliberate example — <c>EfIdempotencyStore</c> writes its three statements with
+/// one deliberate example: <c>EfIdempotencyStore</c> writes its three statements with
 /// <c>ExecuteSqlRawAsync</c>, correctly, since an idempotency key is transport plumbing rather than a
 /// fact about the library. The latent risk is the same mechanism used carelessly:
 /// <c>ExecuteUpdateAsync</c> and <c>ExecuteDeleteAsync</c> are the obvious tools for a bulk
@@ -30,12 +30,12 @@ namespace LibraryLoans.Infrastructure.Auditing;
 /// <para><b>Why it writes into the same unit of work.</b> The audit rows are added to the same change
 /// tracker, so they are inserted by the same <c>SaveChanges</c>, inside the same transaction, as the
 /// change they describe. The two commit together or neither does. Any design that writes the audit
-/// afterwards — a second save, a queue, a different store — has a window in which the data moved and
+/// afterwards (a second save, a queue, a different store) has a window in which the data moved and
 /// the record of it did not, and that window is exactly where the disputed change will land.</para>
 ///
 /// <para><b>Why <c>SavingChanges</c> and not <c>SavedChanges</c>.</b> The old values only exist
 /// before the save. Afterwards every entry is <c>Unchanged</c>, the originals are gone, and a deleted
-/// entity is no longer tracked at all — there would be nothing left to describe.</para>
+/// entity is no longer tracked at all. There would be nothing left to describe.</para>
 /// </summary>
 internal sealed class AuditSaveChangesInterceptor(
     IAuditContext auditContext,
@@ -73,7 +73,7 @@ internal sealed class AuditSaveChangesInterceptor(
 
         // The connection is configured with EnableRetryOnFailure, and a retried save re-enters this
         // hook with the same pending changes still sitting in the change tracker. Without this guard
-        // a transient network blip would double every audit row for the affected request — a bug
+        // a transient network blip would double every audit row for the affected request: a bug
         // that would never appear in a test and would only ever be seen as unexplained duplicates in
         // the one table nobody expects to lie.
         //
@@ -123,7 +123,7 @@ internal sealed class AuditSaveChangesInterceptor(
 
         var changes = DescribeChanges(entry, action.Value);
 
-        // An entity can be marked Modified while every value it holds is the one it already had —
+        // An entity can be marked Modified while every value it holds is the one it already had:
         // an assignment of an identical value is enough. Recording that as a change would put rows
         // in the trail that say nothing happened, and the first person to query it would learn not
         // to trust the count.
@@ -146,7 +146,7 @@ internal sealed class AuditSaveChangesInterceptor(
     /// <summary>
     /// The primary key of the row being described, as text.
     ///
-    /// <para>Reading the key here — before the save — is only correct because every aggregate in this
+    /// <para>Reading the key here, before the save, is only correct because every aggregate in this
     /// system assigns its own id: version-7 GUIDs from the domain factories, with
     /// <c>ValueGeneratedNever()</c> on every configuration. The value is therefore final at this
     /// point. Were a store-generated key ever introduced, its <c>CurrentValue</c> here would be a

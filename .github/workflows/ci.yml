@@ -22,7 +22,7 @@ jobs:
 
       - name: Build
         # Warnings are errors (Directory.Build.props), and that covers MSBuild warnings and NuGet
-        # vulnerability advisories as well as the compiler — so this gate is real.
+        # vulnerability advisories as well as the compiler, so this gate is real.
         run: dotnet build --no-restore --configuration Release
 
       - name: Test
@@ -34,7 +34,7 @@ jobs:
         # Not redundant with the build above, and this project has the scar to prove it: adding
         # central package management once broke the image while a clean local build and a green CI
         # run both passed. MSBuild finds Directory.Packages.props by walking up from the project,
-        # and a build at the repository root always finds it — only the walk *inside* the image
+        # and a build at the repository root always finds it: only the walk *inside* the image
         # did not, because the Dockerfile was not copying it.
         #
         # Any defect that lives in the difference between "builds here" and "builds in the image"
@@ -44,7 +44,7 @@ jobs:
       - name: Start the stack and probe it
         # The last thing a reviewer does first. Proves the image actually runs, that the API waits
         # for PostgreSQL rather than racing it, that migrations apply, and that the seed produces a
-        # catalogue worth searching — none of which the test suite covers, because it exercises the
+        # catalogue worth searching: none of which the test suite covers, because it exercises the
         # application in-process rather than the container.
         run: |
           docker compose up -d --build

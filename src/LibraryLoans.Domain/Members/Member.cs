@@ -12,7 +12,7 @@ public enum MemberStatus
 /// A borrower.
 ///
 /// Note what a Member is not: a login. Identity would come from an external provider, so this
-/// aggregate holds no credentials and there is no user table — see <c>docs/AUTHORIZATION.md</c>.
+/// aggregate holds no credentials and there is no user table: see <c>docs/AUTHORIZATION.md</c>.
 /// </summary>
 public sealed class Member
 {
@@ -23,7 +23,7 @@ public sealed class Member
 
     /// <summary>
     /// Width of the status column. The status is stored as text rather than as the enum's underlying
-    /// integer so the schema reads without a lookup, which means it needs a width — and that width
+    /// integer so the schema reads without a lookup, which means it needs a width, and that width
     /// belongs here beside the values it has to accommodate, not as a bare number in a mapping file.
     /// A future status longer than this would be SQLSTATE 22001 and a 500.
     /// </summary>
@@ -56,7 +56,7 @@ public sealed class Member
     public MemberStatus Status { get; private set; }
 
     /// <summary>
-    /// Derived, never stored. Explicitly ignored in the EF configuration — a <c>can_borrow</c>
+    /// Derived, never stored. Explicitly ignored in the EF configuration: a <c>can_borrow</c>
     /// column would be a second source of truth for something the status already answers.
     /// </summary>
     public bool CanBorrow => Status is MemberStatus.Active;
@@ -91,7 +91,7 @@ public sealed class Member
         }
 
         // Shape only, and deliberately shallow. Whether an address can receive mail is answered by
-        // sending mail to it, not by a pattern — so this rejects what is obviously not an address
+        // sending mail to it, not by a pattern, so this rejects what is obviously not an address
         // and declines to pretend it can do more. An RFC 5322 parser here would be a lot of code
         // buying a stronger claim than the type can actually make.
         if (!IsPlausibleEmail(trimmedEmail))

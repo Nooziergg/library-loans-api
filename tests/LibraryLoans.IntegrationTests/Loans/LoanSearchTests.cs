@@ -44,7 +44,7 @@ public sealed class LoanSearchTests : IAsyncLifetime
         Assert.All(page.Items, loan => Assert.Equal(mine, loan.MemberId));
     }
 
-    /// <summary>An unknown borrower is an empty page — this is a filter, not a subresource.</summary>
+    /// <summary>An unknown borrower is an empty page. This is a filter, not a subresource.</summary>
     [Fact]
     public async Task Reports_an_unknown_borrower_as_an_empty_page_rather_than_404()
     {
@@ -79,7 +79,7 @@ public sealed class LoanSearchTests : IAsyncLifetime
 
     /// <summary>
     /// The rule behind this filter lives in the aggregate as an expression, so the database applies
-    /// the same definition of "overdue" the domain would — rather than a copy of it written into a
+    /// the same definition of "overdue" the domain would, rather than a copy of it written into a
     /// query.
     /// </summary>
     [Fact]
@@ -94,7 +94,7 @@ public sealed class LoanSearchTests : IAsyncLifetime
         Assert.True(overdue.TotalCount >= 1, "The seed is supposed to contain an overdue loan.");
         Assert.True(
             overdue.TotalCount < active.TotalCount,
-            "Overdue should be a subset of active — a returned loan is never overdue.");
+            "Overdue should be a subset of active: a returned loan is never overdue.");
 
         Assert.All(overdue.Items, loan =>
         {

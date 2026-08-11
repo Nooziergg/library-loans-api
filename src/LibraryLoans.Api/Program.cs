@@ -13,7 +13,7 @@ using Microsoft.AspNetCore.HttpLogging;
 var builder = WebApplication.CreateBuilder(args);
 
 // JSON lines on stdout, which is what a container platform collects. Scopes are enabled because
-// they are where the per-request identifiers live — TraceId and RequestId from the framework,
+// they are where the per-request identifiers live: TraceId and RequestId from the framework,
 // CorrelationId from CorrelationMiddleware when a caller supplied one. Without this they are
 // collected and written nowhere.
 builder.Logging.ClearProviders();
@@ -23,14 +23,14 @@ builder.Logging.AddJsonConsole(options =>
     options.UseUtcTimestamp = true;
 });
 
-// One line per request — method, path, status, duration — from the framework rather than from a
+// One line per request (method, path, status, duration), from the framework rather than from a
 // middleware written here. CombineLogs is what makes it one entry instead of the two ("request
 // starting" / "request finished") that HttpLogging emits by default.
 //
 // The field list is the whole payload, and what is absent is a decision: RequestQuery is not
 // enabled. A query string is the part of a URL a caller fills in, and on an API that grows it is
 // where a search term or an email address first turns up in a log nobody meant to hold one. Headers
-// and bodies are likewise off — this is a summary line, not a capture.
+// and bodies are likewise off. This is a summary line, not a capture.
 builder.Services.AddHttpLogging(options =>
 {
     options.LoggingFields = HttpLoggingFields.RequestMethod
@@ -45,11 +45,11 @@ builder.Services.AddHttpLogging(options =>
 builder.Services.AddHttpLoggingInterceptor<HealthProbeLoggingInterceptor>();
 
 // RFC 7807 for every failure, including ones nobody anticipated. The handler deliberately
-// reveals nothing about the exception it caught — see GlobalExceptionHandler.
+// reveals nothing about the exception it caught: see GlobalExceptionHandler.
 builder.Services.AddProblemDetails(options =>
     // The one piece of correlation a client can act on. A caller reporting a failure quotes this,
-    // and it is the same string the response header carried and every log line for that request was
-    // written under, so the report resolves to a grep. CorrelationMiddleware puts it on
+    // and it is the same string the response header carried, so the report resolves to a grep
+    // against either this value or the TraceId beside it. CorrelationMiddleware puts it on
     // TraceIdentifier; the built-in traceId stays as the trace's own id, because they answer
     // different questions and collapsing them would lose the one that spans services.
     options.CustomizeProblemDetails = context =>
@@ -59,7 +59,7 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddHealthChecks();
 
 // Describes the API without a UI package. The endpoints carry WithName and WithSummary, and the
-// TypedResults return types give the generator its status codes and schemas for free — which is
+// TypedResults return types give the generator its status codes and schemas for free, which is
 // a side benefit of returning Results<T, ...> rather than IResult.
 builder.Services.AddOpenApi();
 
@@ -70,7 +70,7 @@ builder.Services.AddSingleton(TimeProvider.System);
 
 // Who is making a change, for the audit trail. Registered here rather than inside
 // AddInfrastructure because only the host knows what a caller is: this implementation reads the
-// ambient HTTP request, and reports "system" when there is none — the startup migration and the
+// ambient HTTP request, and reports "system" when there is none: the startup migration and the
 // seeder both write through the same audited path.
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuditContext, HttpAuditContext>();
@@ -78,8 +78,8 @@ builder.Services.AddScoped<IAuditContext, HttpAuditContext>();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
-// ─────────────────────────────────────────────────────────────────────────────────────────────
-//  AUTHENTICATION AND AUTHORIZATION — NOT IMPLEMENTED. This is the seam, described.
+// ---------------------------------------------------------------------------------------------
+//  AUTHENTICATION AND AUTHORIZATION, NOT IMPLEMENTED. This is the seam, described.
 //
 //  Every endpoint in this service is currently anonymous. That is a deliberate scope decision,
 //  not an oversight, and docs/AUTHORIZATION.md explains the reasoning and the intended design.
@@ -93,7 +93,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 //          .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 //          .AddJwtBearer(options =>
 //          {
-//              // Entra ID / any OIDC provider. Authority + Audience only — no signing key
+//              // Entra ID / any OIDC provider. Authority + Audience only: no signing key
 //              // lives in this service, because validation uses the provider's published
 //              // JWKS. Nothing to leak, nothing to rotate here.
 //              options.Authority = builder.Configuration["Auth:Authority"];
@@ -109,8 +109,8 @@ builder.Services.AddInfrastructure(builder.Configuration);
 //      {
 //          // DEFAULT-DENY. This single line is the most important one in the block: every
 //          // endpoint requires an authenticated caller unless it explicitly opts out, so a
-//          // forgotten attribute produces a 401 rather than a silent hole. The inverse —
-//          // middleware that allows a request when no rule matched — is a fail-open design,
+//          // forgotten attribute produces a 401 rather than a silent hole. The inverse,
+//          // middleware that allows a request when no rule matched, is a fail-open design,
 //          // and it fails quietly, which is the worst combination available.
 //          options.FallbackPolicy = new AuthorizationPolicyBuilder()
 //              .RequireAuthenticatedUser()
@@ -124,17 +124,17 @@ builder.Services.AddInfrastructure(builder.Configuration);
 //  PERMISSION RULES go somewhere different, and the distinction matters. "Is this caller a
 //  librarian" is a role check and belongs in a policy. "Is this caller allowed to act on THIS
 //  member's loans" depends on the resource, cannot be answered from claims alone, and belongs
-//  in the handler as a domain rule — a member may borrow and return only as themselves, while
+//  in the handler as a domain rule: a member may borrow and return only as themselves, while
 //  a librarian may act for anyone. Pushing resource-scoped decisions into policies is how they
 //  end up duplicated per endpoint and inconsistent.
 //
 //  Note what would NOT change: the Domain and Application layers. No aggregate learns what a
 //  role is. That is the dependency rule paying off rather than being asserted.
-// ─────────────────────────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------------------------
 
 var app = builder.Build();
 
-// Outermost, so the correlation scope encloses everything that logs — including the exception
+// Outermost, so the correlation scope encloses everything that logs, including the exception
 // handler, which means the line recording a fault and the line summarising the request that caused
 // it carry the same identifier.
 app.UseMiddleware<CorrelationMiddleware>();
@@ -143,12 +143,12 @@ app.UseMiddleware<CorrelationMiddleware>();
 // than a preference. Outside it means the status this line reports is the one the client actually
 // received, including a 500 or 400 that UseExceptionHandler substituted on the way out. The other
 // way round, every failed request would be logged with whatever the status was before the handler
-// ran — the one case where an accurate log matters most.
+// ran: the one case where an accurate log matters most.
 app.UseHttpLogging();
 
 // Outside the exception handler, which is a correction worth recording rather than quietly
 // swapping: this was registered inside it first, and the ordering was wrong in a way that a passing
-// test suite did not show. Inside, an endpoint that threw would unwind *through* this middleware —
+// test suite did not show. Inside, an endpoint that threw would unwind *through* this middleware:
 // the buffered response would be empty, the key released on the way past, and the 400 or 500 the
 // handler produced afterwards would be written to the real stream and never stored. So the rule
 // "a 4xx is stored and replayed" quietly did not hold for a malformed body, which throws during
@@ -176,8 +176,8 @@ if (app.Configuration.GetValue<bool>("MIGRATE_ON_STARTUP"))
     await app.Services.ApplyMigrationsAsync(app.Lifetime.ApplicationStopping);
 }
 
-// Fills an empty database so the API is worth exploring the moment it starts. Idempotent — it
-// checks for existing data first — so restarting never duplicates anything.
+// Fills an empty database so the API is worth exploring the moment it starts. Idempotent, it
+// checks for existing data first, so restarting never duplicates anything.
 //
 // One assumption worth stating: this is safe because compose runs a single replica. Two instances
 // booting together would both find an empty database and both seed, and one would lose on a unique
@@ -194,7 +194,7 @@ if (app.Configuration.GetValue<bool>("SEED_ON_STARTUP"))
         // Logged loudly and then tolerated, unlike a failed migration, which is fatal because the
         // API cannot serve a request against a schema that is not there. Sample data is a
         // convenience: the service works without it, so a failure here should cost a reviewer some
-        // rows and an obvious error in the log — not a container that restarts forever and takes
+        // rows and an obvious error in the log, not a container that restarts forever and takes
         // every endpoint down with it.
         app.Services.GetRequiredService<ILoggerFactory>()
             .CreateLogger("LibraryLoans.Seeding")
@@ -208,11 +208,11 @@ if (app.Configuration.GetValue<bool>("SEED_ON_STARTUP"))
 //     before authorization, and both before the endpoint executes.
 
 // Liveness deliberately touches no dependency. If the database is briefly unreachable the
-// process is still alive and should not be killed and restarted by the orchestrator — that is
+// process is still alive and should not be killed and restarted by the orchestrator. That is
 // what a readiness probe is for, and the two must not be conflated.
 //
 // This is one of the two endpoints that would carry .AllowAnonymous() under the default-deny
-// policy above — an orchestrator's probe has no token to present. The other is the readiness
+// policy above: an orchestrator's probe has no token to present. The other is the readiness
 // probe. Everything else would require a caller.
 app.MapHealthChecks("/health/live");
 

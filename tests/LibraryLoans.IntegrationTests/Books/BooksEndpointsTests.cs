@@ -73,7 +73,7 @@ public sealed class BooksEndpointsTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// A structurally impossible ISBN is not a malformed request — it is a well-formed request
+    /// A structurally impossible ISBN is not a malformed request. It is a well-formed request
     /// the domain refuses, which is what 422 is for. The 400 case below is the contrast.
     /// </summary>
     [Fact]
@@ -92,7 +92,7 @@ public sealed class BooksEndpointsTests : IAsyncLifetime
     ///
     /// These fail during model binding, before any endpoint filter runs, so the validation filter
     /// that produces every other 400 never sees them. Without explicit handling they surface as
-    /// 500 — a typo in a request body reported as a server fault, on the endpoint a reviewer is
+    /// 500: a typo in a request body reported as a server fault, on the endpoint a reviewer is
     /// most likely to hand-edit a payload for.
     /// </summary>
     [Theory]
@@ -144,7 +144,7 @@ public sealed class BooksEndpointsTests : IAsyncLifetime
     /// <summary>
     /// An ISBN-10 and its ISBN-13 encoding are the same book, so the catalogue must refuse the
     /// second one. This is the test that would fail if the value object merely validated input
-    /// instead of canonicalizing it — both forms pass their own checksum, and the unique index
+    /// instead of canonicalizing it: both forms pass their own checksum, and the unique index
     /// would happily hold two rows for one title.
     /// </summary>
     [Fact]
@@ -163,10 +163,10 @@ public sealed class BooksEndpointsTests : IAsyncLifetime
     ///
     /// Both requests can pass the handler's "does this ISBN exist yet" check microseconds apart,
     /// because at that moment it is true for both. Only the unique index can decide which one
-    /// wins. Without translating its violation into a 409, the loser would receive a 500 — a
+    /// wins. Without translating its violation into a 409, the loser would receive a 500: a
     /// server fault reported for what is really an ordinary, expected outcome.
     ///
-    /// The same mechanism is what a higher-stakes invariant needs — a physical copy on two active
+    /// The same mechanism is what a higher-stakes invariant needs: a physical copy on two active
     /// loans at once is the version of this bug that a library cannot honour.
     /// </summary>
     [Fact]

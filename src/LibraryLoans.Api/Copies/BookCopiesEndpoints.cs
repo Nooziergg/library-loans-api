@@ -29,7 +29,7 @@ public sealed record BookCopyListRequest
     /// Bounded, and not merely for politeness: the offset is computed as
     /// <c>(Page - 1) * PageSize</c> in <c>int</c> arithmetic, which is unchecked. An unbounded page
     /// number multiplies past <c>int.MaxValue</c>, wraps negative, and PostgreSQL rejects the
-    /// resulting negative OFFSET with an error nothing here translates — a 500 for a value the API
+    /// resulting negative OFFSET with an error nothing here translates: a 500 for a value the API
     /// itself declared valid. With this cap the largest product is ten million, and an absurd page
     /// gets the same 400 as every other malformed one.
     /// </summary>
@@ -44,7 +44,7 @@ public sealed record BookCopyListRequest
 }
 
 /// <summary>
-/// Copies are addressed under the title they belong to — a copy has no meaning without one, and the
+/// Copies are addressed under the title they belong to: a copy has no meaning without one, and the
 /// route says so.
 /// </summary>
 internal static class BookCopiesEndpoints
@@ -60,7 +60,7 @@ internal static class BookCopiesEndpoints
 
         copies.MapPost("/", AddAsync)
             // .RequireAuthorization("RequireLibrarian")
-            //   Adding stock is a staff operation. Not implemented — see docs/AUTHORIZATION.md.
+            //   Adding stock is a staff operation. Not implemented: see docs/AUTHORIZATION.md.
             .AddEndpointFilter<ValidationFilter<AddBookCopyRequest>>()
             .WithName("AddBookCopy")
             .WithSummary("Adds a physical copy of a title.");

@@ -1,7 +1,7 @@
 # Normalize line endings so the repo behaves identically on Mac, Linux and Windows.
 * text=auto
 
-# These are consumed by Linux containers and shells — CRLF would break them.
+# These are consumed by Linux containers and shells. CRLF would break them.
 *.sh          text eol=lf
 *.yaml        text eol=lf
 *.yml         text eol=lf

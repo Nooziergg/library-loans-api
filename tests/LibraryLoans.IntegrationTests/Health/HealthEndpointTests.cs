@@ -5,7 +5,7 @@ namespace LibraryLoans.IntegrationTests.Health;
 
 /// <summary>
 /// Boots the real application pipeline and probes it over HTTP. This proves the composition
-/// root actually composes — every service registration resolves, and the app reaches the point
+/// root actually composes: every service registration resolves, and the app reaches the point
 /// of serving traffic.
 ///
 /// It runs against the same throwaway database as the rest of the suite even though liveness

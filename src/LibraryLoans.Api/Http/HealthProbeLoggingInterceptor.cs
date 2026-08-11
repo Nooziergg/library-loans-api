@@ -7,7 +7,7 @@ namespace LibraryLoans.Api.Http;
 ///
 /// <para>An orchestrator polls <c>/health/live</c> every few seconds for the life of the deployment.
 /// Logged, that is the overwhelming majority of the lines in the stream, and it scrolls away the
-/// request a reviewer is tailing the log to see. It is also the least informative traffic there is —
+/// request a reviewer is tailing the log to see. It is also the least informative traffic there is:
 /// the interesting case, a probe that fails, shows up as an unhealthy container rather than as a
 /// line nobody was reading.</para>
 ///

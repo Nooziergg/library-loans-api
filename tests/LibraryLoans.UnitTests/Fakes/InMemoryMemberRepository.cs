@@ -21,7 +21,7 @@ internal sealed class InMemoryMemberRepository : IMemberRepository
 
     /// <summary>
     /// The same objects <see cref="GetByIdAsync"/> returns. A fake has no change tracker, so the
-    /// tracked/untracked distinction the real repository makes has nothing to model here — what
+    /// tracked/untracked distinction the real repository makes has nothing to model here: what
     /// matters is that a handler mutating the result sees its change, which it does.
     /// </summary>
     public Task<Member?> FindForUpdateAsync(Guid id, CancellationToken cancellationToken) =>

@@ -40,7 +40,7 @@ public sealed record CreateBookRequest
     /// <summary>
     /// Only the lower bound is checked here. The upper bound is "not in the future", which
     /// depends on the current time and therefore cannot be a compile-time constant in an
-    /// attribute — the domain enforces it against an injected clock and returns 422. That
+    /// attribute: the domain enforces it against an injected clock and returns 422. That
     /// division is not an accident of the framework; it is the reason the domain check is not
     /// redundant with this one.
     /// </summary>

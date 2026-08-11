@@ -76,7 +76,7 @@ public sealed class BarcodeTests
     /// <summary>
     /// The bound exists before any allocation sized from the input, for the same reason it does on
     /// ISBN. It also has to match the column width exactly, or an accepted value would be rejected
-    /// by PostgreSQL as SQLSTATE 22001 — which nothing translates, so a caller-controlled string
+    /// by PostgreSQL as SQLSTATE 22001, which nothing translates, so a caller-controlled string
     /// would produce a 500.
     /// </summary>
     [Fact]

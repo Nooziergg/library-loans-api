@@ -16,7 +16,7 @@ internal sealed class MemberRepository(LibraryDbContext dbContext) : IMemberRepo
     /// <summary>
     /// Untracked: the borrow path asks this member whether they may borrow and does not change
     /// them. The whole aggregate is loaded rather than projected because <c>Loan.Open</c>
-    /// interrogates it — which is what lets the guard read as <c>if (!member.CanBorrow)</c> instead
+    /// interrogates it, which is what lets the guard read as <c>if (!member.CanBorrow)</c> instead
     /// of as a comparison against a loose flag.
     /// </summary>
     public Task<Member?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>

@@ -6,7 +6,7 @@ namespace LibraryLoans.Infrastructure.Idempotency;
 
 /// <summary>
 /// Maps the idempotency table. Mapped through the model rather than created by hand-written SQL so
-/// that the migration and the snapshot know about it — a table that exists only in a
+/// that the migration and the snapshot know about it: a table that exists only in a
 /// <c>migrationBuilder.Sql</c> call is invisible to every later diff.
 /// </summary>
 internal sealed class IdempotencyKeyConfiguration : IEntityTypeConfiguration<IdempotencyKey>
@@ -34,7 +34,7 @@ internal sealed class IdempotencyKeyConfiguration : IEntityTypeConfiguration<Ide
 
         builder.Property(entry => entry.Fingerprint)
             .HasColumnName(IdempotencySchema.FingerprintColumn)
-            // SHA-256 as hex. Fixed width, so char(64) would do — varchar keeps the option of
+            // SHA-256 as hex. Fixed width, so char(64) would do. Varchar keeps the option of
             // changing algorithm without a migration, at the cost of one length byte per row.
             .HasMaxLength(64)
             .IsRequired();

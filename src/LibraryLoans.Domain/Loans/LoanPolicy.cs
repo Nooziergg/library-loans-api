@@ -16,7 +16,7 @@ public static class LoanPolicy
     /// How many copies one member may hold at once.
     ///
     /// This limit is enforced in the aggregate and, unlike the one-active-loan-per-copy rule, is
-    /// <b>not</b> backed by a database constraint — see the note on <c>Loan.Open</c> for why that
+    /// <b>not</b> backed by a database constraint: see the note on <c>Loan.Open</c> for why that
     /// asymmetry is deliberate.
     /// </summary>
     public const int MaxActiveLoansPerMember = 5;

@@ -41,7 +41,7 @@ public sealed class GetBookByIdHandlerTests
 
         /// <summary>
         /// Not exercised here. Searching is a query built in SQL, so its behaviour is only
-        /// meaningful against a real database — it is covered by the integration suite rather than
+        /// meaningful against a real database. It is covered by the integration suite rather than
         /// by a stub that would only prove this stub works.
         /// </summary>
         public Task<PagedResponse<BookResponse>> SearchAsync(

@@ -17,14 +17,14 @@ public interface IBookRepository
     Task<bool> ExistsWithIsbnAsync(Isbn isbn, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Loads a title so that another aggregate can prove it exists — adding a copy takes the Book
+    /// Loads a title so that another aggregate can prove it exists: adding a copy takes the Book
     /// rather than a <c>BookId</c>, so a caller cannot attach a copy to a title it invented. A read,
     /// so the implementation does not track it.
     /// </summary>
     Task<Book?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Stages a new book. Synchronous by design — this only marks the aggregate for insertion;
+    /// Stages a new book. Synchronous by design: this only marks the aggregate for insertion;
     /// nothing reaches the database until
     /// <see cref="Abstractions.IUnitOfWork.SaveChangesAsync"/> runs, and an <c>async</c>
     /// signature here would imply otherwise.

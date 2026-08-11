@@ -9,7 +9,7 @@ namespace LibraryLoans.UnitTests.Loans;
 /// The overdue rule.
 ///
 /// It exists as an expression so the database can apply it, which means the query layer and the
-/// domain cannot disagree about what "overdue" is — there is only one definition. Testing it means
+/// domain cannot disagree about what "overdue" is. There is only one definition. Testing it means
 /// compiling that same expression here, so what these assertions exercise is exactly what
 /// PostgreSQL is handed. Agreement between the two is true by construction rather than asserted.
 /// </summary>
@@ -47,7 +47,7 @@ public sealed class LoanOverdueTests
 
     /// <summary>
     /// A returned loan is never overdue, however long ago it was due. Overdue means the library is
-    /// still waiting for the book — not that it came back late.
+    /// still waiting for the book, not that it came back late.
     /// </summary>
     [Fact]
     public void A_returned_loan_is_never_overdue()

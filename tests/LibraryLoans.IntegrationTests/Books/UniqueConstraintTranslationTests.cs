@@ -12,7 +12,7 @@ namespace LibraryLoans.IntegrationTests.Books;
 ///
 /// This test exists because the concurrent-create test cannot prove it. If those two requests
 /// happen to serialise, the handler's own pre-check catches the second one and the database is
-/// never consulted — the test passes without the translation path ever running. So if the
+/// never consulted: the test passes without the translation path ever running. So if the
 /// constraint name in <c>DatabaseConstraints</c> ever drifted from the name in the migration,
 /// <c>UniqueConstraintTranslation.Translate</c> would return null, <c>UnitOfWork</c> would
 /// rethrow, clients would start getting 500s instead of 409s, and the suite would stay green.
@@ -57,7 +57,7 @@ public sealed class UniqueConstraintTranslationTests : IAsyncLifetime
     }
 
     // A literal instant rather than DateTimeOffset.UtcNow. Nothing here depends on the current
-    // time, and the codebase's position is that the wall clock is injected, never read — a
+    // time, and the codebase's position is that the wall clock is injected, never read: a
     // stray UtcNow in a test undercuts that argument for no benefit.
     private static readonly DateTimeOffset Now = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
 

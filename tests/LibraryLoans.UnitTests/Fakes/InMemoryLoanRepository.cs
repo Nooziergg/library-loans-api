@@ -13,7 +13,7 @@ internal sealed class InMemoryLoanRepository : ILoanRepository
     private readonly List<Loan> _preexisting = [];
     private readonly List<Loan> _added = [];
 
-    /// <summary>Only what the code under test staged — see <c>InMemoryBookRepository.Added</c>.</summary>
+    /// <summary>Only what the code under test staged: see <c>InMemoryBookRepository.Added</c>.</summary>
     public IReadOnlyList<Loan> Added => _added;
 
     /// <summary>Records which copy the handler asked about, so a transposition is visible.</summary>

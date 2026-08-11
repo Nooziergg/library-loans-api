@@ -10,7 +10,7 @@ namespace LibraryLoans.UnitTests.Books;
 /// <c>[Required]</c> and <c>[StringLength]</c> attributes catch a blank or over-long title at the
 /// boundary and answer 400, so an integration test can never drive the domain's own checks. Without
 /// the theory below, deleting the shared validation from <see cref="Book.UpdateDetails"/> leaves
-/// the entire suite green — and a 300-character title reaches a column declared for 200.
+/// the entire suite green, and a 300-character title reaches a column declared for 200.
 /// </summary>
 public sealed class BookUpdateTests
 {

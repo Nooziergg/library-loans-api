@@ -1,11 +1,11 @@
-# Architecture — Library Loans API
+# Architecture: Library Loans API
 
-> ## ⚠ Read this first: this document is part design, part built
+> ## Read this first: this document is part design, part built
 >
 > It describes the intended architecture of the whole system. **Not all of it exists yet.**
 >
 > What does: the catalogue and the lending cycle. Books, physical copies, members and loans are
-> implemented through every layer, and with them every domain rule this system claims — including
+> implemented through every layer, and with them every domain rule this system claims, including
 > the one that shapes the design, that a copy cannot be on two active loans at once.
 >
 > What does not: the parts of the copy and member lifecycles that no current rule needs (retiring a
@@ -17,13 +17,13 @@
 >
 > | Section | State |
 > |---|---|
-> | 1. Deployment view | **BUILT** — `docker compose up` yields a migrated, seeded, working API |
-> | 2. Layers and the dependency rule | **BUILT** — and enforced by a test |
+> | 1. Deployment view | **BUILT**: `docker compose up` yields a migrated, seeded, working API |
+> | 2. Layers and the dependency rule | **BUILT**, and enforced by a test |
 > | 3. Domain model | **BUILT**, except two columns marked inline as designed-not-in-schema |
-> | 4. State machines | **PARTIAL** — Loan and Member built; BookCopy has no lifecycle state yet |
-> | 5. Request flow — the borrow path | **BUILT** |
-> | 6. Cross-cutting concerns | **MIXED** — marked per row |
-> | 7. Reading order for a reviewer | **BUILT** — only existing files are listed |
+> | 4. State machines | **PARTIAL**: Loan and Member built; BookCopy has no lifecycle state yet |
+> | 5. Request flow: the borrow path | **BUILT** |
+> | 6. Cross-cutting concerns | **MIXED**: marked per row |
+> | 7. Reading order for a reviewer | **BUILT**: only existing files are listed |
 >
 > A short, honest statement of current scope is in the README. This file is the deeper "why".
 
@@ -33,13 +33,13 @@ Everything a reviewer needs is two containers behind one command.
 
 ```mermaid
 flowchart LR
-    R["Reviewer<br/>curl · PowerShell"]
+    R["Reviewer<br/>curl, PowerShell"]
     subgraph compose["docker compose up"]
         direction LR
         API["<b>api</b><br/>ASP.NET Core 10<br/>:8080"]
         DB[("<b>db</b><br/>PostgreSQL 16<br/>volume: pgdata")]
     end
-    LOGS["stdout — JSON lines<br/>docker compose logs -f api"]
+    LOGS["stdout: JSON lines<br/>docker compose logs -f api"]
 
     R -->|"HTTP"| API
     API -->|"EF Core / Npgsql"| DB
@@ -50,8 +50,8 @@ There is no manual database-creation step: compose creates the role and database
 `POSTGRES_*` environment, the API waits on the `db` healthcheck rather than on a sleep, and then
 applies migrations itself.
 
-**The database comes up populated.** After migrating, the API seeds a working library — 60 titles,
-150 physical copies, 40 borrowers and 80 loans — so the first request a reviewer makes has something
+**The database comes up populated.** After migrating, the API seeds a working library (60 titles,
+150 physical copies, 40 borrowers and 80 loans), so the first request a reviewer makes has something
 to return. Gated behind `SEED_ON_STARTUP`, which compose sets, and idempotent by checking for
 existing data, so restarting never duplicates anything.
 
@@ -60,7 +60,7 @@ requests against a schema that is not there, but it works perfectly well without
 failure should cost some rows and a loud error rather than a container that restarts forever.
 
 Migrating on startup is a convenience decision, not a recommendation. In production, migrations
-run as a separate deployment step — with several replicas, every instance would otherwise race to
+run as a separate deployment step, with several replicas, every instance would otherwise race to
 apply the same DDL, and the application's runtime identity would need schema-modification rights
 it should never hold. Here it is gated behind `MIGRATE_ON_STARTUP` so the trade is visible and
 reversible.
@@ -71,10 +71,10 @@ Arrows are compile-time references. **They only point inward.**
 
 ```mermaid
 flowchart TD
-    API["<b>LibraryLoans.Api</b><br/>minimal APIs · middleware · DI composition root"]
-    INF["<b>LibraryLoans.Infrastructure</b><br/>EF Core · migrations · seed · adapters"]
-    APP["<b>LibraryLoans.Application</b><br/>use cases · ports it owns · Result&lt;T&gt;"]
-    DOM["<b>LibraryLoans.Domain</b><br/>aggregates · value objects · invariants<br/><i>zero package references</i>"]
+    API["<b>LibraryLoans.Api</b><br/>minimal APIs, middleware, DI composition root"]
+    INF["<b>LibraryLoans.Infrastructure</b><br/>EF Core, migrations, seed, adapters"]
+    APP["<b>LibraryLoans.Application</b><br/>use cases, ports it owns, Result&lt;T&gt;"]
+    DOM["<b>LibraryLoans.Domain</b><br/>aggregates, value objects, invariants<br/><i>zero package references</i>"]
 
     API --> APP
     API -.->|"DI wiring in Program.cs only"| INF
@@ -99,19 +99,19 @@ makes `Application` testable with hand-written fakes and no database.
 Domain assembly's **transitive** reference graph and fails the build if EF Core or ASP.NET Core
 ever appears in it. A companion test,
 `Application_does_not_reference_persistence_or_the_web`, does the same for the Application
-layer with a deliberately different forbidden list — Application is allowed the two first-party
+layer with a deliberately different forbidden list. Application is allowed the two first-party
 `Microsoft.Extensions.*.Abstractions` packages, and reusing Domain's stricter list would have
 created pressure to loosen the rule that actually matters.
 
 ## 3. Domain model
 
 > **BUILT**, with two exceptions marked inline: `BOOK_COPY.RetiredAt` and `LOAN.RenewalCount` are
-> designed but not in the schema — they arrive with copy retirement and renewals.
+> designed but not in the schema: they arrive with copy retirement and renewals.
 >
 > **There is no availability or status column on `BOOK_COPY`, and that is the deliberate part.**
 > "On loan" is derived state: it is true exactly when a loan row exists for the copy with a null
 > `ReturnedAt`. Storing it would mean writing two tables on every borrow, and would create a column
-> that can disagree with the loans table — which is precisely the corruption the partial unique
+> that can disagree with the loans table, which is precisely the corruption the partial unique
 > index exists to prevent, and which that index could not police, since it constrains `LOAN` only.
 >
 > The alternative was weighed rather than overlooked. A materialised availability flag turns
@@ -119,11 +119,11 @@ created pressure to loosen the rule that actually matters.
 > scale, and the only ways to keep such a flag honest are a trigger, a materialised view, or
 > discipline. It costs nothing to decline here, because
 > `NOT EXISTS (SELECT 1 FROM loans WHERE book_copy_id = c.id AND returned_at IS NULL)` is served by
-> `ix_loans_active_copy` itself — **the index that makes the invariant true is the same index that
+> `ix_loans_active_copy` itself: **the index that makes the invariant true is the same index that
 > makes the availability query fast.**
 >
 > There is deliberately **no user or credential table**. Authentication would come from an
-> external OIDC provider, so identities live there and this service stores no passwords — see
+> external OIDC provider, so identities live there and this service stores no passwords: see
 > [AUTHORIZATION.md](AUTHORIZATION.md). A `Member` is a library borrower, not a login.
 
 ```mermaid
@@ -143,7 +143,7 @@ erDiagram
         uuid Id PK
         uuid BookId FK
         string Barcode UK
-        timestamptz RetiredAt "DESIGNED, not in the schema — null = in service"
+        timestamptz RetiredAt "DESIGNED, not in the schema: null = in service"
     }
     MEMBER {
         uuid Id PK
@@ -166,7 +166,7 @@ erDiagram
 ## 4. State machines
 
 > **PARTIAL**, per aggregate:
-> **Loan — BUILT.** **Member — BUILT.** **BookCopy — DESIGNED, NOT BUILT**, because the copy has no
+> **Loan: BUILT.** **Member: BUILT.** **BookCopy: DESIGNED, NOT BUILT**, because the copy has no
 > lifecycle state yet; it is `{ Id, BookId, Barcode }` in code.
 >
 > Transitions shown below that have no method behind them are labelled where they appear.
@@ -189,7 +189,7 @@ stateDiagram-v2
     end note
 ```
 
-Guards on `Loan.Open()` — all enforced inside the aggregate, none in a service, and in this order:
+Guards on `Loan.Open()`: all enforced inside the aggregate, none in a service, and in this order:
 
 1. the member is `Active`, not `Suspended`
 2. the member holds fewer than 5 active loans
@@ -197,7 +197,7 @@ Guards on `Loan.Open()` — all enforced inside the aggregate, none in a service
 
 The order is deliberate. A caller's own eligibility is reported before the resource's, so a
 suspended member is told they are suspended rather than sent to look for a different copy. And the
-copy check is last precisely because it is the one the database also enforces — which keeps the
+copy check is last precisely because it is the one the database also enforces, which keeps the
 "same error whichever layer noticed" property about a single, final guard.
 
 Only guard 3 is enforced twice, and the asymmetry is the argument: guard 2 can also be raced, and a
@@ -205,7 +205,7 @@ member briefly holding six books is a policy annoyance a librarian can unwind, w
 physical book promised to two people is a failure the library cannot honour.
 
 `Return()` on an already-returned loan is a **domain error**, not a silent no-op. Two concurrent
-returns can both pass that guard — accepted, because the outcome is idempotent in substance and
+returns can both pass that guard: accepted, because the outcome is idempotent in substance and
 nothing is promised twice. The race that *is* arbitrated is more interesting: a return running
 concurrently with a re-borrow of the same copy, where the new row cannot land while the old one
 still has a null `ReturnedAt`.
@@ -213,7 +213,7 @@ still has a null `ReturnedAt`.
 *Renewal is designed but not built: `Renew()`, capped at two and refused once overdue, arrives with
 `LOAN.RenewalCount`.*
 
-### BookCopy — DESIGNED, NOT BUILT
+### BookCopy: DESIGNED, NOT BUILT
 
 ```mermaid
 stateDiagram-v2
@@ -227,7 +227,7 @@ stateDiagram-v2
         for this copy. Storing it would put a column
         here that can disagree with that table.
 
-        Retire() from a copy that is out is rejected —
+        Retire() from a copy that is out is rejected:
         a copy in a borrower's hands cannot be
         removed from the catalogue.
     end note
@@ -235,7 +235,7 @@ stateDiagram-v2
 
 Only the `Add` transition exists in code. `BookCopy` is currently `{ Id, BookId, Barcode }` with no
 lifecycle state at all, and `Retire()` arrives with the copy-management endpoints. The rule
-governing it — a copy on loan cannot be retired — is deferred with it, on the principle that a
+governing it, a copy on loan cannot be retired, is deferred with it, on the principle that a
 guard whose precondition cannot be reached is a guard that cannot be tested.
 
 ### Member
@@ -247,7 +247,7 @@ stateDiagram-v2
 
     note right of Suspended
         Suspension is allowed while holding
-        active loans — it blocks NEW borrows,
+        active loans: it blocks NEW borrows,
         it does not recall existing ones.
 
         Suspending an already-suspended member
@@ -256,10 +256,10 @@ stateDiagram-v2
 ```
 
 *Reinstatement is designed but not built: `Reinstate()` arrives with the member-management
-endpoints. Nothing in the current rule set needs the `Suspended → Active` transition, and adding a
+endpoints. Nothing in the current rule set needs the `Suspended -> Active` transition, and adding a
 method with no caller and no invariant behind it would be a lever nobody pulls.*
 
-## 5. Request flow — the borrow path
+## 5. Request flow: the borrow path
 
 > **BUILT.**
 
@@ -276,9 +276,9 @@ sequenceDiagram
     participant PG as PostgreSQL
 
     C->>EP: { memberId, bookCopyId }
-    Note over EP: anonymous today — see AUTHORIZATION.md
+    Note over EP: anonymous today: see AUTHORIZATION.md
     EP->>H: BorrowCopyCommand + CancellationToken
-    H->>RP: copy · member · active-loan count · copy already out?
+    H->>RP: copy, member, active-loan count, copy already out?
     RP->>PG: four reads, AsNoTracking()
     H->>AG: Loan.Open(copy, member, count, copyHasActiveLoan, now)
     alt member suspended, or at their loan limit
@@ -307,7 +307,7 @@ memory and one by the database, and a client cannot tell which. Both come from t
 method, so they cannot drift apart.
 
 **Why both checks.** The aggregate check gives a clean, fast, well-worded rejection for the common
-case. The partial unique index is the one that cannot be raced — two requests can both pass the
+case. The partial unique index is the one that cannot be raced: two requests can both pass the
 in-memory check microseconds apart, and exactly one INSERT survives. Catching `23505`, matching on
 the constraint *name* so an unrelated collision is never misreported, and translating it back into
 the same domain error is what makes the rule actually true under concurrency. Enforcing it only in
@@ -315,7 +315,7 @@ the aggregate is the mistake most submissions make.
 
 **Four reads before one write.** Named rather than hidden: the alternative is a single query
 returning all four facts, which would mean `Loan.Open` taking loose scalars instead of the
-aggregates whose rules it applies — moving the rules out of the objects that own them to save three
+aggregates whose rules it applies: moving the rules out of the objects that own them to save three
 round trips. At a library's request rate that trade is clear; at a different rate it would not be.
 
 **How you would know the accepted race had fired.** The five-loan limit is enforced once, so two
@@ -333,10 +333,10 @@ HAVING count(*) > 5;
 ```
 
 Run on a schedule, an empty result is the evidence the race has not fired, and a row is a librarian's
-five-minute correction rather than an incident — which is the asymmetry that made the trade worth
+five-minute correction rather than an incident, which is the asymmetry that made the trade worth
 taking. This is the honest shape of the answer: a constraint prevents, a reconciliation detects, and
 choosing detection means committing to run it. The same query is the alert if the trade is ever
-revisited, and it is why the limit lives in `LoanPolicy` as a named constant rather than a literal —
+revisited, and it is why the limit lives in `LoanPolicy` as a named constant rather than a literal:
 the rule and the query that audits it must not be able to disagree.
 
 ## 6. Cross-cutting concerns
@@ -344,29 +344,29 @@ the rule and the query that audits it must not be able to disagree.
 | Concern | Mechanism | State |
 |---|---|---|
 | Structured logging | `AddJsonConsole` with scopes and UTC timestamps; message templates throughout, never string interpolation, so parameters stay queryable fields | **BUILT** |
-| Error shaping | `IExceptionHandler` + `AddProblemDetails()` → RFC 7807, with `DomainError.Code` surfaced as the `code` extension. Exception messages never reach a client. | **BUILT** |
+| Error shaping | `IExceptionHandler` + `AddProblemDetails()` -> RFC 7807, with `DomainError.Code` surfaced as the `code` extension. Exception messages never reach a client. | **BUILT** |
 | Client disconnects | an aborted request is logged at Information and answered with no body, so error-rate alerting does not track how often users close tabs | **BUILT** |
 | Validation | value objects reject invalid state at construction; `Result<T>` carries failures outward; DataAnnotations on request DTOs for shape only | **BUILT** |
-| Time | `TimeProvider` injected everywhere in production code — no `DateTime.UtcNow` in `src/`. Two integration tests read the real clock, which is unavoidable when asserting that a seeded loan is overdue *now* | **BUILT** |
+| Time | `TimeProvider` injected everywhere in production code: no `DateTime.UtcNow` in `src/`. Two integration tests read the real clock, which is unavoidable when asserting that a seeded loan is overdue *now* | **BUILT** |
 | Resilience | `EnableRetryOnFailure` on the Npgsql connection | **BUILT** |
-| Health | `/health/live` — process liveness, touching no dependency | **BUILT** |
-| Health | `/health/ready` — readiness with a database probe | not built |
-| Request logging | first-party `UseHttpLogging` with `CombineLogs` — one entry per request: method, path, status, duration. `HealthProbeLoggingInterceptor` (`IHttpLoggingInterceptor`, .NET 9) keeps liveness probes out of the stream. Registered outside the exception handler, so the status it reports is the one the client received, including a code the handler substituted on the way out. `RequestQuery` deliberately not enabled. **Replaced a hand-written middleware that did the same job in ~130 lines** | **BUILT** |
-| Correlation | `CorrelationMiddleware`, ~40 lines, covering only what the platform does not. The framework already supplies `TraceId`/`SpanId`/`RequestId` scopes, a `traceId` in every ProblemDetails body, and inbound `traceparent` propagation. Missing: returning an identifier to the caller, and accepting a human-readable alias. So this echoes `X-Correlation-Id`, puts it on `TraceIdentifier` (where `CustomizeProblemDetails` reads it), and pushes a log scope **only when the caller supplied one** — otherwise the value is the trace id and is already on the line. Inbound values are bounded to 64 characters from a restricted alphabet and refused if the header repeats; failing that check replaces the value rather than the request | **BUILT** |
-| Audit trail | `AuditSaveChangesInterceptor` — every insert, update and delete recorded with actor, correlation id and before/after values, in the same transaction as the change. Hung off `SaveChanges` rather than called from handlers, so coverage is structural: a change made through the change tracker cannot reach the database without passing through it, and a new aggregate is audited the day it is mapped. Not covered, and stated rather than glossed: SQL issued around the tracker — `ExecuteSqlRaw`, `ExecuteUpdate`, `ExecuteDelete`. `EfIdempotencyStore` does this on purpose; a bulk write over business data would need its own row | **BUILT** |
-| Idempotency | `IdempotencyMiddleware` — `POST` accepts an `Idempotency-Key`, and a retry of the same request replays the stored response. The primary key of `idempotency_keys` arbitrates concurrent claims, the same technique as the active-loan index | **BUILT** |
-| AuthN/AuthZ | JWT bearer against an external OIDC provider, `FallbackPolicy = RequireAuthenticatedUser` — default-deny, so a forgotten attribute causes a 401 rather than a silent hole. Design and seams in [AUTHORIZATION.md](AUTHORIZATION.md) | **not built, by decision** |
+| Health | `/health/live`: process liveness, touching no dependency | **BUILT** |
+| Health | `/health/ready`: readiness with a database probe | not built |
+| Request logging | first-party `UseHttpLogging` with `CombineLogs`, giving one entry per request: method, path, status, duration. `HealthProbeLoggingInterceptor` (`IHttpLoggingInterceptor`, .NET 9) keeps liveness probes out of the stream. Registered outside the exception handler, so the status it reports is the one the client received, including a code the handler substituted on the way out. `RequestQuery` deliberately not enabled. **Replaced a hand-written middleware that did the same job in ~130 lines** | **BUILT** |
+| Correlation | `CorrelationMiddleware`, ~40 lines, covering only what the platform does not. The framework already supplies `TraceId`/`SpanId`/`RequestId` scopes, a `traceId` in every ProblemDetails body, and inbound `traceparent` propagation. Missing: returning an identifier to the caller, and accepting a human-readable alias. So this echoes `X-Correlation-Id`, puts it on `TraceIdentifier` (where `CustomizeProblemDetails` reads it), and pushes a log scope **only when the caller supplied one**: otherwise the value is the trace id and is already on the line. Inbound values are bounded to 64 characters from a restricted alphabet and refused if the header repeats; failing that check replaces the value rather than the request | **BUILT** |
+| Audit trail | `AuditSaveChangesInterceptor`: every insert, update and delete recorded with actor, correlation id and before/after values, in the same transaction as the change. Hung off `SaveChanges` rather than called from handlers, so coverage is structural: a change made through the change tracker cannot reach the database without passing through it, and a new aggregate is audited the day it is mapped. Not covered, and stated rather than glossed: SQL issued around the tracker: `ExecuteSqlRaw`, `ExecuteUpdate`, `ExecuteDelete`. `EfIdempotencyStore` does this on purpose; a bulk write over business data would need its own row | **BUILT** |
+| Idempotency | `IdempotencyMiddleware`: `POST` accepts an `Idempotency-Key`, and a retry of the same request replays the stored response. The primary key of `idempotency_keys` arbitrates concurrent claims, the same technique as the active-loan index | **BUILT** |
+| AuthN/AuthZ | JWT bearer against an external OIDC provider, `FallbackPolicy = RequireAuthenticatedUser`: default-deny, so a forgotten attribute causes a 401 rather than a silent hole. Design and seams in [AUTHORIZATION.md](AUTHORIZATION.md) | **not built, by decision** |
 | Rate limiting | fixed window on write endpoints | not built |
-| Retention | expiring old audit rows and idempotency keys on a schedule | not built — both tables are indexed on their timestamp for it |
+| Retention | expiring old audit rows and idempotency keys on a schedule | not built: both tables are indexed on their timestamp for it |
 
 The logging rows deserve one clarification, since a reader may expect a named library: logging
 goes through `ILogger` and writes JSON to stdout via the built-in console formatter. That is
-deliberately a swap and not a rewrite — replacing the sink changes composition-root wiring and
+deliberately a swap and not a rewrite: replacing the sink changes composition-root wiring and
 nothing else, which is exactly why no logging library is load-bearing here.
 
 Two categories are turned down in `appsettings.json` rather than left at their defaults, and both are
 decisions with a comment where they live. `Microsoft.AspNetCore` writes two lines per request plus
-routing chatter, which the middleware above replaces — turning it down and building nothing in its
+routing chatter, which the middleware above replaces: turning it down and building nothing in its
 place is precisely the failure this pair exists to avoid. `Microsoft.EntityFrameworkCore.Database.Command`
 logs the text of every statement at Information: parameter values are already redacted, since
 `EnableSensitiveDataLogging` is off, but it restated each request two or three more times and at
@@ -379,15 +379,15 @@ test instead of a `Thread.Sleep`, and it is first-party since .NET 8.
 
 Logs are structured, which means every parameter in a message template becomes a queryable
 field that outlives the request and gets shipped wherever logs go. So the rule is stated before
-there is anything to break it: **personal data does not go into a log line.** Identifiers do —
-`MemberId`, `LoanId`, `BookId` — because they are meaningless outside the database and are
+there is anything to break it: **personal data does not go into a log line.** Identifiers do (
+`MemberId`, `LoanId`, `BookId`), because they are meaningless outside the database and are
 exactly what an investigation needs. Names, email addresses and membership numbers do not.
 
 Written down before there is a `Member` type to break it, because the alternative is discovering
 an email address in a log field during a review and retrofitting the rule across every handler.
 
 The request line follows the same rule, which is why it logs the path and not the query string. The
-path is ours — a route and an identifier. The query string is whatever a caller put there, and on an
+path is ours: a route and an identifier. The query string is whatever a caller put there, and on an
 API that grows it is the first place a search term or an email address arrives in a log nobody meant
 to hold one. The correlation identifier is how a line joins back to its request, so nothing is lost.
 
@@ -395,27 +395,27 @@ to hold one. The correlation identifier is how a line joins back to its request,
 
 Six files that exist today, in this order, tell most of the story:
 
-1. **`src/LibraryLoans.Domain/Loans/Loan.cs`** — every rule about whether a copy may leave the
+1. **`src/LibraryLoans.Domain/Loans/Loan.cs`**: every rule about whether a copy may leave the
    building, in one file, with the reasoning for the guard order and for which races are accepted
    and which are not.
-2. **`src/LibraryLoans.Infrastructure/Persistence/Configurations/LoanConfiguration.cs`** — the
+2. **`src/LibraryLoans.Infrastructure/Persistence/Configurations/LoanConfiguration.cs`**: the
    partial unique index on `(book_copy_id) WHERE returned_at IS NULL`. The filter is not an
    optimisation; it is the difference between "a copy may have one active loan" and "a copy may be
    borrowed once, ever". A temporal invariant expressed as a static index.
-3. **`src/LibraryLoans.Infrastructure/Persistence/UnitOfWork.cs`** — the half of a uniqueness rule
+3. **`src/LibraryLoans.Infrastructure/Persistence/UnitOfWork.cs`**: the half of a uniqueness rule
    most implementations leave out: translating the database's ruling back into the same domain
    error the in-memory check produces, matched on constraint name so an unrelated collision is
    never misreported.
-4. **`tests/LibraryLoans.IntegrationTests/Loans/LoansEndpointsTests.cs`** — two tests carry the
+4. **`tests/LibraryLoans.IntegrationTests/Loans/LoansEndpointsTests.cs`**: two tests carry the
    argument. `Allows_exactly_one_of_two_simultaneous_borrows_of_one_copy` proves the rule survives a
    race, asserting the row count and not merely the status codes. `Borrows_the_same_copy_again_after_it_has_been_returned`
-   is the one that would fail if the index were plain rather than partial — every other test in the
+   is the one that would fail if the index were plain rather than partial: every other test in the
    suite passes either way, which is why it was written before the migration was scaffolded.
-5. **`src/LibraryLoans.Domain/Books/Isbn.cs`** — why the value object canonicalises ISBN-10 into
+5. **`src/LibraryLoans.Domain/Books/Isbn.cs`**: why the value object canonicalises ISBN-10 into
    ISBN-13 rather than merely validating it. Both encodings satisfy their own check digit, so a
    validating-only type would let the catalogue hold one book twice under a unique index that
    claims otherwise.
-6. **`tests/LibraryLoans.UnitTests/Architecture/DependencyRuleTests.cs`** — the dependency rule as
+6. **`tests/LibraryLoans.UnitTests/Architecture/DependencyRuleTests.cs`**: the dependency rule as
    an executable check over the transitive reference graph, not a diagram.
 
 Then, if the reasoning about concurrency is of interest:

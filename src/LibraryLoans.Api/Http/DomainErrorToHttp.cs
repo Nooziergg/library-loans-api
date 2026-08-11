@@ -29,8 +29,8 @@ internal static class DomainErrorToHttp
     private static int StatusCodeFor(DomainErrorKind kind) => kind switch
     {
         // 422, not 400. The distinction is deliberate and consistent across the API: 400 means
-        // the request could not be understood as a request — a missing field, a string where a
-        // number belongs — and is produced by the DataAnnotations filter before a handler ever
+        // the request could not be understood as a request (a missing field, a string where a
+        // number belongs), and is produced by the DataAnnotations filter before a handler ever
         // runs. 422 means the request was understood perfectly and describes something the
         // domain will not accept, such as an ISBN whose check digit does not compute.
         DomainErrorKind.Validation => StatusCodes.Status422UnprocessableEntity,
@@ -39,7 +39,7 @@ internal static class DomainErrorToHttp
         DomainErrorKind.NotFound => StatusCodes.Status404NotFound,
 
         // Unreachable while the enum and this switch agree. If a new kind is added and this is
-        // forgotten, a 500 is the honest answer — inventing a plausible status for an
+        // forgotten, a 500 is the honest answer: inventing a plausible status for an
         // unclassified failure would hide the omission.
         _ => StatusCodes.Status500InternalServerError,
     };

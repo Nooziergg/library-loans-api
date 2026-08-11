@@ -11,7 +11,7 @@ namespace LibraryLoans.Application.Books;
 /// Removes a title and its physical copies.
 ///
 /// Two preconditions, reported separately because a caller can act on one and not the other: a copy
-/// currently out means "try again when it is back", while any lending history at all means "never" —
+/// currently out means "try again when it is back", while any lending history at all means "never":
 /// deleting the book would remove the copies that a loan record points at, and lending history is a
 /// record rather than a cache.
 ///

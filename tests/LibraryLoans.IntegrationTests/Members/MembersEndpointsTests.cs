@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace LibraryLoans.IntegrationTests.Members;
 
 /// <summary>
-/// Reading and suspending borrowers, and listing the copies of a title — the endpoints that close
+/// Reading and suspending borrowers, and listing the copies of a title: the endpoints that close
 /// resources which could previously be created and never read.
 /// </summary>
 [Collection(DatabaseCollection.Name)]
@@ -115,7 +115,7 @@ public sealed class MembersEndpointsTests : IAsyncLifetime
 
     /// <summary>
     /// The register is a page of up to a hundred borrowers, and it answers anyone. Before this was
-    /// fixed it carried every one of their names and email addresses — while the handler four lines
+    /// fixed it carried every one of their names and email addresses, while the handler four lines
     /// away in the same feature carefully logged only the id, on the stated rule that personal data
     /// must not outlive the request. The rule was real and it was being enforced in one layer and
     /// broken in the next.
@@ -150,7 +150,7 @@ public sealed class MembersEndpointsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    // ── Copies of a title ────────────────────────────────────────────────────────────────────
+    // -- Copies of a title --------------------------------------------------------------------
 
     [Fact]
     public async Task Lists_the_copies_of_a_title()
@@ -169,7 +169,7 @@ public sealed class MembersEndpointsTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// A subresource, so an unknown title is a 404 — the question "which copies does it have" has no
+    /// A subresource, so an unknown title is a 404: the question "which copies does it have" has no
     /// answer if the title does not exist. Contrast the loan filters, where an unknown member id
     /// correctly returns an empty page.
     /// </summary>
