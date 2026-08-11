@@ -21,8 +21,49 @@ jobs:
         run: dotnet restore
 
       - name: Build
-        # Warnings are errors (Directory.Build.props), so this gate is real.
+        # Warnings are errors (Directory.Build.props), and that covers MSBuild warnings and NuGet
+        # vulnerability advisories as well as the compiler — so this gate is real.
         run: dotnet build --no-restore --configuration Release
 
       - name: Test
+        # The integration suite starts its own PostgreSQL through Testcontainers, so no service
+        # container is configured here. ubuntu-latest provides the Docker daemon it needs.
         run: dotnet test --no-build --configuration Release --verbosity normal
+
+      - name: Build the container image
+        # Not redundant with the build above, and this project has the scar to prove it: adding
+        # central package management once broke the image while a clean local build and a green CI
+        # run both passed. MSBuild finds Directory.Packages.props by walking up from the project,
+        # and a build at the repository root always finds it — only the walk *inside* the image
+        # did not, because the Dockerfile was not copying it.
+        #
+        # Any defect that lives in the difference between "builds here" and "builds in the image"
+        # is invisible to every step above. This closes that class.
+        run: docker build --tag library-loans-api:ci .
+
+      - name: Start the stack and probe it
+        # The last thing a reviewer does first. Proves the image actually runs, that the API waits
+        # for PostgreSQL rather than racing it, that migrations apply, and that the seed produces a
+        # catalogue worth searching — none of which the test suite covers, because it exercises the
+        # application in-process rather than the container.
+        run: |
+          docker compose up -d --build
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://localhost:8080/health/live > /dev/null; then
+              echo "API healthy after ${attempt}s"
+              break
+            fi
+            sleep 1
+          done
+          curl --fail --silent http://localhost:8080/health/live
+          curl --fail --silent "http://localhost:8080/api/v1/books?search=orwell" \
+            | grep -q '"totalCount":3' \
+            || { echo "Seeded catalogue did not answer as expected"; exit 1; }
+
+      - name: Container logs on failure
+        if: failure()
+        run: docker compose logs api
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

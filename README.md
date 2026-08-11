@@ -76,78 +76,78 @@ cd library-loans-api
 docker compose up
 ```
 
-Then:
+That is the whole setup. The database comes up **already populated** — 60 titles, 150 physical
+copies, 40 borrowers and 80 loans — so there is something to look at immediately:
 
 ```bash
 curl http://localhost:8080/health/live          # -> Healthy
 curl http://localhost:8080/openapi/v1.json      # every route, with schemas
 
-# add a book, then read it back
-curl -X POST http://localhost:8080/api/v1/books \
-  -H 'Content-Type: application/json' \
-  -d '{"isbn":"978-0-306-40615-7","title":"The Hobbit","author":"J. R. R. Tolkien","publishedYear":1937}'
-```
+curl -s "localhost:8080/api/v1/books?search=orwell"                  # three titles
+curl -s "localhost:8080/api/v1/books?pageSize=1" | grep totalCount    # 60 in the catalogue
+curl -s "localhost:8080/api/v1/books?availableOnly=true&pageSize=1"   # 40 — the rest are all on loan
 
-The response carries a `Location` header; `curl` that to read the book back. Note the ISBN comes
-back as `9780306406157` — hyphens stripped and, had you sent the 10-digit form, converted to its
-13-digit equivalent, so one book has exactly one representation.
+curl -s "localhost:8080/api/v1/loans?overdue=true"                   # somebody is late
+curl -s "localhost:8080/api/v1/members?status=Suspended"             # and somebody is suspended
+```
 
 PowerShell:
 
 ```powershell
 Invoke-RestMethod http://localhost:8080/health/live
-Invoke-RestMethod http://localhost:8080/openapi/v1.json | ConvertTo-Json -Depth 4
-
-$book = @{ isbn = '978-0-306-40615-7'; title = 'The Hobbit'
-           author = 'J. R. R. Tolkien'; publishedYear = 1937 } | ConvertTo-Json
-$created = Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/v1/books `
-                             -ContentType 'application/json' -Body $book
-Invoke-RestMethod "http://localhost:8080/api/v1/books/$($created.id)"
+Invoke-RestMethod "http://localhost:8080/api/v1/books?search=orwell" | Select-Object -Expand items
+Invoke-RestMethod "http://localhost:8080/api/v1/books?availableOnly=true&pageSize=1" |
+    Select-Object totalCount
 ```
 
-Things worth trying, because they show the rules rather than describing them:
+### Three things worth trying, because they show the rules rather than describing them
+
+**A title whose every copy is out** stays in the catalogue and drops out of the available list —
+which is the availability filter and the loan invariant answering from the same index:
 
 ```bash
-# 422 - right shape, wrong check digit
-curl -i -X POST http://localhost:8080/api/v1/books -H 'Content-Type: application/json' \
+curl -s "localhost:8080/api/v1/books?search=Hobbit"                  # found
+curl -s "localhost:8080/api/v1/books?search=Hobbit&availableOnly=true"  # not available
+```
+
+**One ISBN has one representation.** All four of these find the same book, because the search term
+is parsed by the same value object the catalogue is stored with:
+
+```bash
+curl -s "localhost:8080/api/v1/books?search=9781000000009"
+curl -s "localhost:8080/api/v1/books?search=978-1-00000-000-9"
+```
+
+**Invalid input is refused in two distinct voices** — 400 when the request cannot be understood,
+422 when it is understood and the domain declines it, 409 when it collides with what already exists:
+
+```bash
+# 422 - right shape, wrong check digit. Understood, and refused.
+curl -i -X POST localhost:8080/api/v1/books -H 'Content-Type: application/json' \
   -d '{"isbn":"9780306406158","title":"x","author":"y","publishedYear":1990}'
 
-# 409 - the ISBN-10 encoding of a book already in the catalogue
-curl -i -X POST http://localhost:8080/api/v1/books -H 'Content-Type: application/json' \
-  -d '{"isbn":"0306406152","title":"x","author":"y","publishedYear":1990}'
-
-# 400 - malformed request, rejected before the domain sees it
-curl -i -X POST http://localhost:8080/api/v1/books -H 'Content-Type: application/json' \
+# 400 - a required field is missing. Not understood, so the domain never sees it.
+curl -i -X POST localhost:8080/api/v1/books -H 'Content-Type: application/json' \
   -d '{"isbn":"9780306406157","publishedYear":1990}'
+
+# 400 - an unpublished sort field, rejected by an allowlist before it reaches a query
+curl -i "localhost:8080/api/v1/books?sortBy=whatever"
 ```
 
-### The seeded library
+### How the seed is built, and why it matters
 
-`docker compose up` leaves you with a working library rather than an empty schema — 60 titles, 150
-copies, 40 borrowers and 80 loans. It is deliberately arranged so the rules are observable without
-editing anything:
+**Every row goes through the domain factories** — `Book.Create`, `Member.Register`, `Loan.Open` —
+so the seeded data provably satisfies every invariant, and the seeder becomes the only caller of the
+domain that is not an HTTP request. That is what would catch an aggregate that only works when
+driven from an endpoint: the seeder has to supply the member's active-loan count and whether a copy
+is already out, from state it is building itself.
 
-```bash
-curl -s "localhost:8080/api/v1/books?search=orwell"                    # three titles
-curl -s "localhost:8080/api/v1/books?pageSize=1" | grep totalCount      # 60 titles
-curl -s "localhost:8080/api/v1/books?availableOnly=true&pageSize=1"     # 40 — the rest are all out
+It is deterministic without a faker library — fixed lists and index arithmetic, no randomness — and
+idempotent, so restarting never duplicates anything.
 
-# a title whose every copy is on loan: found by search, absent from the available list
-curl -s "localhost:8080/api/v1/books?search=Nineteen"
-curl -s "localhost:8080/api/v1/books?search=Nineteen&availableOnly=true"
-```
-
-The seed also contains a suspended member, a borrower holding the maximum five loans, an overdue
-loan, and thirty loans already returned — so each rule can be watched refusing something rather than
-read about.
-
-Two notes on how it is built, because both are deliberate. **Every row goes through the domain
-factories** — `Book.Create`, `Member.Register`, `Loan.Open` — so the seeded data provably satisfies
-every invariant, and the seeder is the only caller of the domain that is not an HTTP request, which
-is what would catch an aggregate that only works when driven from an endpoint. And **the titles and
-authors are real while the ISBNs are not**: they carry correct check digits so the domain accepts
-them, but attaching a genuine ISBN to a row invented for a demonstration would put a real identifier
-on the wrong record.
+**The titles and authors are real; the ISBNs are not.** They carry correct check digits so the
+domain accepts them, but attaching a genuine ISBN to a row invented for a demonstration would put a
+real identifier on the wrong record.
 
 ### Watching the loan rule work
 

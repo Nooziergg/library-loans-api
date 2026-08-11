@@ -60,6 +60,39 @@ internal sealed class GlobalExceptionHandler(
             return true;
         }
 
+        // A body the framework could not read at all — malformed JSON, a string where a number
+        // belongs, no body where one is required, or a payload over the size limit. That is the
+        // caller's mistake, and it already carries the right status; answering 500 would both
+        // mislead the caller and file their typo as a server fault in the error rate.
+        //
+        // It also has to be handled here rather than by a filter, because the failure happens
+        // during model binding — before any endpoint filter runs, so the validation filter that
+        // produces the other 400s never sees these.
+        if (exception is BadHttpRequestException badRequest)
+        {
+            logger.LogInformation(
+                "Unreadable request body on {RequestMethod} {RequestPath}",
+                httpContext.Request.Method,
+                httpContext.Request.Path);
+
+            httpContext.Response.StatusCode = badRequest.StatusCode;
+
+            return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
+            {
+                HttpContext = httpContext,
+                ProblemDetails = new ProblemDetails
+                {
+                    Status = badRequest.StatusCode,
+                    Title = "The request could not be read.",
+                    // Deliberately fixed text. The underlying message carries byte offsets and JSON
+                    // paths, which is detail about our parsing rather than about their mistake, and
+                    // this handler's rule is that no exception text reaches a client.
+                    Detail = "The request body could not be parsed. Check that it is valid JSON and "
+                             + "that each field has the expected type.",
+                },
+            });
+        }
+
         logger.LogError(
             exception,
             "Unhandled exception handling {RequestMethod} {RequestPath}",

@@ -54,6 +54,63 @@ public sealed class GlobalExceptionHandlerTests
         Assert.Equal(StatusCodes.Status500InternalServerError, httpContext.Response.StatusCode);
     }
 
+    /// <summary>
+    /// A body the framework could not read is the caller's mistake, not a server fault.
+    ///
+    /// This has to be handled here rather than by the validation filter, because binding fails
+    /// before any endpoint filter runs — so the path that produces every other 400 never sees these.
+    /// Answering 500 would tell a caller their valid-looking typo broke the server, and would file
+    /// it in the error rate as though it had.
+    /// </summary>
+    [Fact]
+    public async Task Answers_an_unreadable_request_body_with_the_status_it_carries()
+    {
+        var problemDetails = new RecordingProblemDetailsService();
+        var httpContext = new DefaultHttpContext();
+
+        var handled = await CreateHandler(problemDetails).TryHandleAsync(
+            httpContext,
+            new BadHttpRequestException("Failed to read parameter from the request body as JSON.", 400),
+            CancellationToken.None);
+
+        Assert.True(handled);
+        Assert.Equal(StatusCodes.Status400BadRequest, httpContext.Response.StatusCode);
+        Assert.Equal(StatusCodes.Status400BadRequest, problemDetails.LastProblemDetails?.Status);
+    }
+
+    /// <summary>Uses the status the exception carries, so a payload over the size limit is a 413.</summary>
+    [Fact]
+    public async Task Preserves_a_non_400_status_from_the_binding_failure()
+    {
+        var problemDetails = new RecordingProblemDetailsService();
+        var httpContext = new DefaultHttpContext();
+
+        await CreateHandler(problemDetails).TryHandleAsync(
+            httpContext,
+            new BadHttpRequestException("Request body too large.", StatusCodes.Status413PayloadTooLarge),
+            CancellationToken.None);
+
+        Assert.Equal(StatusCodes.Status413PayloadTooLarge, httpContext.Response.StatusCode);
+    }
+
+    /// <summary>The parser's own wording never reaches the caller — byte offsets and JSON paths included.</summary>
+    [Fact]
+    public async Task Does_not_leak_the_parser_message_for_an_unreadable_body()
+    {
+        var problemDetails = new RecordingProblemDetailsService();
+        const string parserDetail = "'\\' is an invalid start of a property name. BytePositionInLine: 1.";
+
+        await CreateHandler(problemDetails).TryHandleAsync(
+            new DefaultHttpContext(),
+            new BadHttpRequestException(parserDetail, 400),
+            CancellationToken.None);
+
+        Assert.DoesNotContain(
+            "BytePositionInLine",
+            problemDetails.LastProblemDetails?.Detail ?? string.Empty,
+            StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Answers_an_unexpected_fault_with_a_500_that_reveals_nothing()
     {

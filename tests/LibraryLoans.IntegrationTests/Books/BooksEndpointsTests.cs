@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using LibraryLoans.Application.Books;
 using LibraryLoans.IntegrationTests.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
@@ -84,6 +85,33 @@ public sealed class BooksEndpointsTests : IAsyncLifetime
 
         var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
         Assert.Equal("book.isbn.checksum_failed", problem?.Extensions["code"]?.ToString());
+    }
+
+    /// <summary>
+    /// A body the framework cannot read at all is still a client error.
+    ///
+    /// These fail during model binding, before any endpoint filter runs, so the validation filter
+    /// that produces every other 400 never sees them. Without explicit handling they surface as
+    /// 500 — a typo in a request body reported as a server fault, on the endpoint a reviewer is
+    /// most likely to hand-edit a payload for.
+    /// </summary>
+    [Theory]
+    [InlineData("{not json at all")]
+    [InlineData("")]
+    [InlineData("null")]
+    [InlineData("""{"isbn":"9780306406157","title":"x","author":"y","publishedYear":"not-a-number"}""")]
+    public async Task Rejects_an_unreadable_request_body_with_400(string body)
+    {
+        var response = await _client.PostAsync(
+            "/api/v1/books",
+            new StringContent(body, Encoding.UTF8, "application/json"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        // Still RFC 7807, and still says nothing about the parser's internals.
+        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.DoesNotContain("BytePositionInLine", problem.Detail ?? string.Empty, StringComparison.Ordinal);
     }
 
     [Fact]
