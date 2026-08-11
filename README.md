@@ -34,9 +34,13 @@ working API:
 - **Structured logs** — JSON on stdout, one line per request with method, path, status and elapsed
   time, and a correlation identifier returned in `X-Correlation-Id` and carried by every line
   written while handling that request
+- **An audit trail** — every insert, update and delete recorded with the actor, the correlation id
+  and the before/after values, written inside the same transaction as the change it describes
+- **Idempotent retries** — `POST` accepts an `Idempotency-Key`, and a repeat of the same request
+  replays the original response instead of doing the work twice
 - **Seed data — 330 rows out of the box**: 60 real titles, 150 physical copies, 40 borrowers and
   80 loans, arranged so the rules are visible rather than described
-- 187 unit tests and 103 integration tests, the latter against a disposable PostgreSQL that
+- 187 unit tests and 118 integration tests, the latter against a disposable PostgreSQL that
   Testcontainers creates and destroys per run
 
 ### The rules, and where each is enforced
@@ -65,6 +69,10 @@ working API:
   third time with no new rule to show, and *removing* a member or a copy is not a delete at all but
   the retirement and deactivation transitions above. A reviewer counting endpoints will see the gap;
   it is what a fixed budget bought, not something overlooked
+- **Expiry for the audit trail and the idempotency keys.** Both tables only grow, and both are
+  indexed on their timestamp precisely so the job that deletes past a cutoff is a range scan rather
+  than a full one. It is a scheduled job rather than application code, which is why it is described
+  here instead of half-built as a timer inside a web process that may be running on three replicas
 - **Authentication and authorization — deliberately.** Every endpoint is anonymous. The brief
   does not ask for auth, and the budget went to the domain invariants it does ask for. The
   decision, the intended design (an external OIDC provider, default-deny, and why role rules and
@@ -245,6 +253,96 @@ the first place something sensitive turns up in a log nobody meant to hold it. N
 membership numbers are logged anywhere — identifiers only. And health probes are logged at Debug, so
 an orchestrator polling liveness forever does not scroll away the request you are reading.
 
+### The audit trail
+
+Every insert, update and delete is recorded — who did it, under which request, and what changed.
+Create a book and then look at what the database remembers:
+
+```bash
+curl -s -X POST localhost:8080/api/v1/books \
+  -H 'Content-Type: application/json' \
+  -d '{"isbn":"9780140012934","title":"Watership Down","author":"Richard Adams","publishedYear":1972}'
+
+docker compose exec db psql -U library -d library -c \
+  "SELECT entity_type, action, actor, correlation_id, changes FROM audit_entries WHERE actor <> 'system';"
+```
+
+**It is written by an EF Core `SaveChanges` interceptor, not by the handlers.** That is the whole
+design decision. "Every handler remembers to call the audit service" is a rule that holds until the
+fifteenth handler is written under pressure, and the gap it leaves is silent — nothing fails, a row
+simply has no history, and you find out during the incident that needed it. Hanging the trail off
+`SaveChanges` inverts that: a change cannot reach the database without passing through it, so a new
+aggregate is audited the day it is mapped and nobody has to remember anything. One registration, in
+`AddInfrastructure`; no handler opts in, no entity carries an attribute.
+
+**The rows are written inside the same transaction as the change they describe.** They are added to
+the same change tracker, so they are inserted by the same `SaveChanges` and commit or roll back
+together. This is testable, and tested: post a duplicate ISBN, watch the unique index refuse it, and
+the audit table shows one creation rather than two. Anything that writes the audit afterwards — a
+second save, a queue, a different store — has a window where the data moved and the record of it did
+not, and that window is where the disputed change will land.
+
+What each row carries, and one rule that shapes it — *record what would otherwise be
+unrecoverable*:
+
+| Action | `changes` column | Why |
+|---|---|---|
+| Created | null | The row is in its own table; copying it would store it twice |
+| Updated | the delta, `{"Title":{"old":…,"new":…}}` | The current value is in the table; what it *used to be* is not |
+| Deleted | every value the row had | The one case where the data is genuinely gone |
+
+The actor is **`anonymous`** for HTTP callers and **`system`** for the startup migration and the
+seeder — which is why the query above filters `system` out, or the 330 seeded rows would bury your
+own change. That `anonymous` is deliberate and it is the honest answer: nothing in this service
+authenticates anyone, so the trail says so rather than naming a user it never verified. The seam is
+one branch in `HttpAuditContext`, already reading whatever principal the pipeline establishes.
+
+### Retrying a write without doing it twice
+
+A client that sends `POST /loans` and times out does not know whether the loan was created. Retrying
+risks a duplicate; not retrying risks losing the operation. Send an `Idempotency-Key` and the retry
+is free:
+
+```bash
+# The same command twice. One book, one response, and the second says so.
+curl -si -X POST localhost:8080/api/v1/books \
+  -H 'Content-Type: application/json' -H 'Idempotency-Key: retry-me-1' \
+  -d '{"isbn":"9780571056866","title":"Lord of the Flies","author":"William Golding","publishedYear":1954}' \
+  | grep -E 'HTTP/|Idempotency-Replayed'
+```
+
+The first call returns `201`; the second returns the same `201`, the same body — the same id, which
+is the part that matters — and `Idempotency-Replayed: true`. Only one book exists.
+
+**The primary key of `idempotency_keys` is the mechanism.** Both copies of a concurrent retry try to
+insert the same key and PostgreSQL lets exactly one win, which is the same technique as the partial
+unique index on active loans: between "does this key exist" and "insert it" there is a gap, and the
+gap is where duplicates are born. `ON CONFLICT DO NOTHING` reports the loss as zero rows rather than
+as an exception, so the ordinary case of a duplicate retry costs nothing.
+
+Four decisions worth stating, because each is a place this could be wrong:
+
+- **Opt-in, and `POST` only.** `GET`, `PUT` and `DELETE` are already idempotent by definition; `POST`
+  is the only method whose repetition means a second thing happening. A request with no key behaves
+  exactly as it did before the feature existed.
+- **A 4xx is stored and replayed; a 5xx releases the key.** A malformed request is malformed every
+  time, so replaying that verdict is free and correct. A server fault is not an answer, and storing
+  it would turn a momentary failure into a permanent one for the client best behaved enough to retry.
+- **A key reused for a *different* request is refused with 422**, following
+  [draft-ietf-httpapi-idempotency-key-header](https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/),
+  rather than being served the first response — which would silently discard the second request. The
+  request is fingerprinted (method, path, body) to detect it.
+- **It does not replace the domain's uniqueness rules.** A duplicate borrow with no key is still
+  refused by the partial unique index. This makes a well-behaved client's retry pleasant; the index
+  is what makes the invariant true regardless of who calls it or how.
+
+The honest limitation: the key is claimed in its own transaction, before the work, because a
+concurrent duplicate has to be able to see it *while* the original is still running. So if the
+process dies between the business commit and the response being stored, the key is left claimed and
+a retry is told "in progress" until it expires. That is the safe direction to fail — the alternative
+re-runs a change that already committed — but it is a real edge, and expiry is a retention job this
+submission describes rather than builds.
+
 ## Running the tests
 
 Unit tests need nothing running:
@@ -415,6 +513,14 @@ single service needs. Across several it is the wrong shape: `X-Correlation-Id` i
 `traceparent` is a standard, and spans record *where* the time went rather than only how much of it
 there was. `AddOpenTelemetry()` with the ASP.NET Core and Npgsql instrumentation is the change, and
 it would replace this middleware rather than sit beside it.
+
+**The idempotency keys would move out of PostgreSQL**, to Redis or an equivalent with native
+expiry. Keys are short-lived, write-heavy and read once — the least database-shaped data in the
+system — and putting them in a store that expires rows itself removes the retention job rather than
+scheduling it. That is a different `IIdempotencyStore` and nothing else: not a change to the
+middleware, and not a change to any handler. The audit trail would stay exactly where it is, because
+its requirements are the opposite ones — durable, transactional with the data it describes, and
+queryable next to it.
 
 **Deep pagination would move to cursors.** Offset paging is correct and cheap for the page sizes a
 catalogue UI asks for, and degrades badly at page 5,000 because the database still walks the rows it

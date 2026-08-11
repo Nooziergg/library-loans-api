@@ -4,6 +4,7 @@ using LibraryLoans.Api.Http;
 using LibraryLoans.Api.Loans;
 using LibraryLoans.Api.Members;
 using LibraryLoans.Application;
+using LibraryLoans.Application.Abstractions;
 using LibraryLoans.Infrastructure;
 using LibraryLoans.Infrastructure.Persistence;
 using LibraryLoans.Infrastructure.Persistence.Seeding;
@@ -43,6 +44,13 @@ builder.Services.AddOpenApi();
 // fake clock rather than one that waits for the wall clock to cooperate. First-party since
 // .NET 8; there is no reason for DateTime.UtcNow to appear anywhere in this codebase.
 builder.Services.AddSingleton(TimeProvider.System);
+
+// Who is making a change, for the audit trail. Registered here rather than inside
+// AddInfrastructure because only the host knows what a caller is: this implementation reads the
+// ambient HTTP request, and reports "system" when there is none — the startup migration and the
+// seeder both write through the same audited path.
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IAuditContext, HttpAuditContext>();
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -115,6 +123,13 @@ app.UseMiddleware<RequestLoggingMiddleware>();
 // Anything thrown downstream becomes a ProblemDetails rather than reaching the framework's
 // developer error page.
 app.UseExceptionHandler();
+
+// Outside the endpoints and inside the exception handler, and both halves of that are deliberate.
+// Inside the handler means the response this middleware captures and stores is the finished one —
+// including a 500 the handler substituted, which is the case it must recognise and *not* store.
+// Outside the endpoints means one registration covers every POST there will ever be, rather than a
+// filter each endpoint has to remember to attach.
+app.UseMiddleware<IdempotencyMiddleware>();
 
 // Off unless explicitly enabled; compose turns it on. See DatabaseMigrator for why production
 // would not do this.

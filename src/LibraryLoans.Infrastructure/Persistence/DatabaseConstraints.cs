@@ -69,6 +69,25 @@ internal static class DatabaseConstraints
 
     public const string BooksAuthorTrigramIndex = "ix_books_author_trgm";
 
+    /// <summary>
+    /// "Everything that ever happened to this entity" — the question the audit trail exists to
+    /// answer, over a table that only ever grows.
+    /// </summary>
+    public const string AuditEntriesEntityIndex = "ix_audit_entries_entity";
+
+    /// <summary>
+    /// Time-ordered access to the audit trail. Also what a retention job would use to find the rows
+    /// older than its cutoff, which is a scan of the whole table without it.
+    /// </summary>
+    public const string AuditEntriesOccurredAtIndex = "ix_audit_entries_occurred_at";
+
+    /// <summary>
+    /// What a retention job would delete idempotency keys on. Keys are worth keeping only as long as
+    /// a client might still retry, and without expiry the table grows for the lifetime of the
+    /// service.
+    /// </summary>
+    public const string IdempotencyKeysCreatedAtIndex = "ix_idempotency_keys_created_at";
+
     // ── Check constraints ────────────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -94,6 +113,16 @@ internal static class DatabaseConstraints
     public const string BookCopiesPrimaryKey = "pk_book_copies";
 
     public const string LoansPrimaryKey = "pk_loans";
+
+    public const string AuditEntriesPrimaryKey = "pk_audit_entries";
+
+    /// <summary>
+    /// Not merely a primary key: this one is the idempotency mechanism. Two concurrent requests
+    /// carrying the same <c>Idempotency-Key</c> both insert this row, and PostgreSQL decides which
+    /// of them owns it. Same technique as <see cref="LoansActiveCopyUniqueIndex"/> — the gap between
+    /// checking and inserting is where duplicates are born, and only the database can close it.
+    /// </summary>
+    public const string IdempotencyKeysPrimaryKey = "pk_idempotency_keys";
 
     public const string BookCopiesBookForeignKey = "fk_book_copies_books";
 

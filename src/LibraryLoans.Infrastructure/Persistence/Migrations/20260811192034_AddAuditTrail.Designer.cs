@@ -3,6 +3,7 @@ using System;
 using LibraryLoans.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace LibraryLoans.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(LibraryDbContext))]
-    partial class LibraryDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260811192034_AddAuditTrail")]
+    partial class AddAuditTrail
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -239,45 +242,6 @@ namespace LibraryLoans.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_audit_entries_entity");
 
                     b.ToTable("audit_entries", (string)null);
-                });
-
-            modelBuilder.Entity("LibraryLoans.Infrastructure.Idempotency.IdempotencyKey", b =>
-                {
-                    b.Property<string>("Key")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
-                        .HasColumnName("idempotency_key");
-
-                    b.Property<byte[]>("Body")
-                        .HasColumnType("bytea")
-                        .HasColumnName("body");
-
-                    b.Property<string>("ContentType")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("content_type");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("Fingerprint")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("fingerprint");
-
-                    b.Property<int?>("StatusCode")
-                        .HasColumnType("integer")
-                        .HasColumnName("status_code");
-
-                    b.HasKey("Key")
-                        .HasName("pk_idempotency_keys");
-
-                    b.HasIndex("CreatedAt")
-                        .HasDatabaseName("ix_idempotency_keys_created_at");
-
-                    b.ToTable("idempotency_keys", (string)null);
                 });
 
             modelBuilder.Entity("LibraryLoans.Domain.Copies.BookCopy", b =>
