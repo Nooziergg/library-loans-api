@@ -35,8 +35,8 @@ it is a large part of why this runs on PostgreSQL.
 | An ISBN must be structurally valid | `Isbn` | not applicable |
 | One ISBN appears once in the catalogue | pre-check | unique index |
 | A barcode is unique across copies | pre-check | unique index |
-| A member holds at most 5 active loans | `Loan.Open` | not enforced (accepted race, see below) |
-| A suspended member cannot borrow | `Loan.Open` | not applicable |
+| A member holds at most 5 active loans | `Member.MayBorrow` | not enforced (accepted race, see below) |
+| A suspended member cannot borrow | `Member.MayBorrow` | not applicable |
 | A loan cannot be returned twice | `Loan.Return` | not applicable |
 | A loan is due 14 days after it is taken | `Loan.Open` | not applicable, the period is policy rather than a schema rule |
 | A loan's due date is after its loan date | `Loan.Open`, by construction | check constraint `due_at > loaned_at` |
