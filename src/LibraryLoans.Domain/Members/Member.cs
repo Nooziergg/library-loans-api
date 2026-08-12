@@ -1,4 +1,5 @@
 using LibraryLoans.Domain.Common;
+using LibraryLoans.Domain.Loans;
 
 namespace LibraryLoans.Domain.Members;
 
@@ -60,6 +61,52 @@ public sealed class Member
     /// column would be a second source of truth for something the status already answers.
     /// </summary>
     public bool CanBorrow => Status is MemberStatus.Active;
+
+    /// <summary>
+    /// How many loans one member may hold at once.
+    ///
+    /// It lives here rather than beside the loan period because it is a rule about a member, not
+    /// about a loan: the day this becomes a per-category or per-branch lookup, it is this aggregate
+    /// that grows the lookup.
+    /// </summary>
+    public const int MaxActiveLoans = 5;
+
+    /// <summary>
+    /// Whether this member may take out one more loan, given how many they already hold.
+    ///
+    /// <para>Both reasons a <i>member</i> can be refused live here, so "what stops someone
+    /// borrowing" is answered by reading one file. <see cref="Loan.Open"/> calls this before
+    /// looking at the copy, which is why a suspended member is told they are suspended rather than
+    /// that the book is out.</para>
+    ///
+    /// <para>The count is a parameter because an aggregate cannot count rows in a table it does not
+    /// know about, and giving it a repository to ask with is the shortcut that makes a domain model
+    /// untestable.</para>
+    ///
+    /// <para>The error codes stay in <c>LoanErrors</c> deliberately. They are published in API
+    /// responses and asserted in tests, so they are a contract; moving a rule between types is not a
+    /// reason to rename one.</para>
+    /// </summary>
+    public Result MayBorrow(int activeLoanCount)
+    {
+        if (!CanBorrow)
+        {
+            return LoanErrors.MemberSuspended();
+        }
+
+        // This limit can be raced: two concurrent borrows can both read a count of four and the
+        // member ends up holding six. That is accepted, and the asymmetry with the copy rule is the
+        // interesting part of the design. A member briefly over their limit is a policy annoyance a
+        // librarian can unwind; the same physical book promised to two people is a failure the
+        // library cannot honour. Only the second is worth a database constraint, and
+        // ARCHITECTURE.md carries the reconciliation query that detects this one having fired.
+        if (activeLoanCount >= MaxActiveLoans)
+        {
+            return LoanErrors.MemberAtLoanLimit();
+        }
+
+        return Result.Success();
+    }
 
     /// <summary>
     /// The only way to bring a Member into existence. New members are Active; there is no way to

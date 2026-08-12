@@ -104,7 +104,7 @@ response. Every number on that page came from running the command.
 - **Idempotent retries**: `POST` accepts an `Idempotency-Key`, and a repeat of the same request
   replays the original response instead of doing the work twice
 - **Seed data, 330 rows out of the box**, arranged so the rules are visible rather than described
-- 183 unit tests and 120 integration tests, the latter against a disposable PostgreSQL that
+- 183 unit tests and 121 integration tests, the latter against a disposable PostgreSQL that
   Testcontainers creates and destroys per run
 
 One deliberate shape worth flagging here rather than in a footnote: the member register returns

@@ -9,7 +9,8 @@ internal sealed class LoanRepository(LibraryDbContext dbContext) : ILoanReposito
     public Task<bool> HasActiveLoanForCopyAsync(Guid bookCopyId, CancellationToken cancellationToken) =>
         dbContext.Loans
             .AsNoTracking()
-            .AnyAsync(loan => loan.BookCopyId == bookCopyId && loan.ReturnedAt == null, cancellationToken);
+            .Where(Loan.Active)
+            .AnyAsync(loan => loan.BookCopyId == bookCopyId, cancellationToken);
 
     /// <summary>
     /// Whether any copy of a title is currently out. Joins through copies rather than denormalising
@@ -19,9 +20,9 @@ internal sealed class LoanRepository(LibraryDbContext dbContext) : ILoanReposito
     public Task<bool> HasActiveLoanForBookAsync(Guid bookId, CancellationToken cancellationToken) =>
         dbContext.Loans
             .AsNoTracking()
+            .Where(Loan.Active)
             .AnyAsync(
-                loan => loan.ReturnedAt == null &&
-                        dbContext.BookCopies.Any(copy => copy.Id == loan.BookCopyId && copy.BookId == bookId),
+                loan => dbContext.BookCopies.Any(copy => copy.Id == loan.BookCopyId && copy.BookId == bookId),
                 cancellationToken);
 
     /// <summary>Whether any loan at all, returned or not, references a copy of the title.</summary>
@@ -35,7 +36,8 @@ internal sealed class LoanRepository(LibraryDbContext dbContext) : ILoanReposito
     public Task<int> CountActiveLoansForMemberAsync(Guid memberId, CancellationToken cancellationToken) =>
         dbContext.Loans
             .AsNoTracking()
-            .CountAsync(loan => loan.MemberId == memberId && loan.ReturnedAt == null, cancellationToken);
+            .Where(Loan.Active)
+            .CountAsync(loan => loan.MemberId == memberId, cancellationToken);
 
     /// <summary>
     /// The one deliberately tracked read in this codebase. Returning a loan is a write that starts

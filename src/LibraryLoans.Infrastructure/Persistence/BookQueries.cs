@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using LibraryLoans.Application.Books;
 using LibraryLoans.Application.Common;
 using LibraryLoans.Domain.Books;
+using LibraryLoans.Domain.Loans;
 using Microsoft.EntityFrameworkCore;
 
 namespace LibraryLoans.Infrastructure.Persistence;
@@ -136,7 +137,7 @@ internal sealed class BookQueries(LibraryDbContext dbContext) : IBookQueries
 
         return books.Where(book => dbContext.BookCopies.Any(copy =>
             copy.BookId == book.Id &&
-            !dbContext.Loans.Any(loan => loan.BookCopyId == copy.Id && loan.ReturnedAt == null)));
+            !dbContext.Loans.Where(Loan.Active).Any(loan => loan.BookCopyId == copy.Id)));
     }
 
     /// <summary>

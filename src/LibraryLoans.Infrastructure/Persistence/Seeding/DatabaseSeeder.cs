@@ -300,7 +300,7 @@ public static class DatabaseSeeder
     {
         for (var index = 3; index < memberCount; index++)
         {
-            if (activeLoanCount[index] < LoanPolicy.MaxActiveLoansPerMember - 1)
+            if (activeLoanCount[index] < Member.MaxActiveLoans - 1)
             {
                 return index;
             }

@@ -12,12 +12,9 @@ public static class LoanPolicy
     /// <summary>How long a borrower keeps a copy before it is due back.</summary>
     public const int LoanPeriodDays = 14;
 
-    /// <summary>
-    /// How many copies one member may hold at once.
-    ///
-    /// This limit is enforced in the aggregate and, unlike the one-active-loan-per-copy rule, is
-    /// <b>not</b> backed by a database constraint: see the note on <c>Loan.Open</c> for why that
-    /// asymmetry is deliberate.
-    /// </summary>
-    public const int MaxActiveLoansPerMember = 5;
+    // How many loans a member may hold at once used to live here too, and it moved to
+    // Member.MaxActiveLoans. It reads as a lending policy, but it is a rule about a member rather
+    // than about a loan, and keeping it here meant Loan.Open evaluated a member's eligibility
+    // using a constant from its own namespace. The day that limit varies by member category or by
+    // branch, it is Member that grows the lookup.
 }

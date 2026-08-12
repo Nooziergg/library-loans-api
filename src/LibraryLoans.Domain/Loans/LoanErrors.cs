@@ -1,3 +1,5 @@
+using LibraryLoans.Domain.Members;
+
 using LibraryLoans.Domain.Common;
 
 namespace LibraryLoans.Domain.Loans;
@@ -29,7 +31,7 @@ public static class LoanErrors
     public static DomainError MemberAtLoanLimit() =>
         DomainError.RuleViolation(
             "loan.member.at_loan_limit",
-            $"This member already holds the maximum of {LoanPolicy.MaxActiveLoansPerMember} active loans.");
+            $"This member already holds the maximum of {Member.MaxActiveLoans} active loans.");
 
     /// <summary>
     /// A conflict rather than a rule violation, and for the same reason as

@@ -52,6 +52,21 @@ public sealed class Loan
     public bool IsActive => ReturnedAt is null;
 
     /// <summary>
+    /// <see cref="IsActive"/> in the form a query can use, so the rule is written once.
+    ///
+    /// <para><c>IsActive</c> is a property and therefore invisible to a provider translating to
+    /// SQL, which is how the same condition ends up hand-written in the query layer instead: once
+    /// in the loan register, once in the borrow path, and once inside the availability filter for
+    /// the catalogue. Three copies of one rule, each of which keeps working if another is
+    /// changed.</para>
+    ///
+    /// <para>Same technique as <see cref="OverdueAt"/>, and parameterless because this condition
+    /// needs nothing from the caller. Compose it with <c>Where(Loan.Active)</c> rather than
+    /// restating <c>ReturnedAt == null</c>.</para>
+    /// </summary>
+    public static Expression<Func<Loan, bool>> Active => loan => loan.ReturnedAt == null;
+
+    /// <summary>
     /// Whether a loan is overdue at a given instant: still out, and past its due date.
     ///
     /// Expressed as an expression rather than a method, and that is the whole point. A method body
@@ -99,20 +114,14 @@ public sealed class Loan
     {
         // Guard order is deliberate: the caller's own eligibility first, then the resource's.
         // A suspended member should be told they are suspended, not that the book is out.
-        if (!member.CanBorrow)
+        //
+        // Both member-side rules are asked of the member rather than evaluated here. A loan
+        // deciding whether someone is allowed to borrow is feature envy, and it puts half the
+        // answer to "what stops a member borrowing" in a file about loans.
+        var eligibility = member.MayBorrow(memberActiveLoanCount);
+        if (!eligibility.IsSuccess)
         {
-            return LoanErrors.MemberSuspended();
-        }
-
-        // This limit can be raced: two concurrent borrows can both read a count of four, and the
-        // member ends up holding six. That is accepted, and the asymmetry with the check below is
-        // the interesting part of this design: a member briefly over their limit is a policy
-        // annoyance that a librarian can unwind, while the same physical book promised to two
-        // people is a failure the library cannot honour. Only the second one gets a database
-        // constraint behind it, because only the second one is worth the cost of having one.
-        if (memberActiveLoanCount >= LoanPolicy.MaxActiveLoansPerMember)
-        {
-            return LoanErrors.MemberAtLoanLimit();
+            return eligibility.Error;
         }
 
         // Checked last, on purpose. This is the one guard the database also enforces, via a partial

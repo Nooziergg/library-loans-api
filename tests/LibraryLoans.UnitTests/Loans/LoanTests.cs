@@ -66,7 +66,7 @@ public sealed class LoanTests
         var result = Loan.Open(
             ACopy(),
             AMember(),
-            memberActiveLoanCount: LoanPolicy.MaxActiveLoansPerMember,
+            memberActiveLoanCount: Member.MaxActiveLoans,
             copyHasActiveLoan: false,
             now: Now);
 
@@ -80,7 +80,7 @@ public sealed class LoanTests
         var result = Loan.Open(
             ACopy(),
             AMember(),
-            memberActiveLoanCount: LoanPolicy.MaxActiveLoansPerMember - 1,
+            memberActiveLoanCount: Member.MaxActiveLoans - 1,
             copyHasActiveLoan: false,
             now: Now);
 
@@ -101,7 +101,7 @@ public sealed class LoanTests
         var result = Loan.Open(
             ACopy(),
             member,
-            memberActiveLoanCount: LoanPolicy.MaxActiveLoansPerMember,
+            memberActiveLoanCount: Member.MaxActiveLoans,
             copyHasActiveLoan: true,
             now: Now);
 

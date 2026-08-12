@@ -44,7 +44,7 @@ internal sealed class LoanQueries(LibraryDbContext dbContext, TimeProvider timeP
         if (query.Active is { } active)
         {
             loans = active
-                ? loans.Where(loan => loan.ReturnedAt == null)
+                ? loans.Where(Loan.Active)
                 : loans.Where(loan => loan.ReturnedAt != null);
         }
 
