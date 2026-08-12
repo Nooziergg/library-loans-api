@@ -336,8 +336,14 @@ Run on a schedule, an empty result is the evidence the race has not fired, and a
 five-minute correction rather than an incident, which is the asymmetry that made the trade worth
 taking. This is the honest shape of the answer: a constraint prevents, a reconciliation detects, and
 choosing detection means committing to run it. The same query is the alert if the trade is ever
-revisited, and it is why the limit lives in `LoanPolicy` as a named constant rather than a literal:
-the rule and the query that audits it must not be able to disagree.
+revisited, and it is why the limit lives in `Member.MaxActiveLoans` as a named constant rather than
+a literal: the rule and the query that audits it must not be able to disagree.
+
+Both member-side refusals sit in `Member.MayBorrow(activeLoanCount)` rather than in `Loan.Open`.
+They are rules about a member, and evaluating them inside a loan meant half the answer to "what
+stops someone borrowing" lived in a file about loans. `Loan.Open` asks the member and propagates the
+refusal, which also means the limit becoming a per-category or per-branch lookup is a change to one
+aggregate.
 
 ## 6. Cross-cutting concerns
 
