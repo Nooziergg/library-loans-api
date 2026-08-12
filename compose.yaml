@@ -4,6 +4,12 @@
 # Every credential below is a DEVELOPMENT value, committed on purpose so the project runs
 # out of the box. Production guidance is in the README.
 
+# The project name, pinned. Compose otherwise derives it from the directory name, which prefixes
+# the volume: cloning this repo into a differently named folder would produce a different volume
+# and a database that looks like it started empty. Pinning it makes the volume `library-loans_pgdata`
+# on every machine, so the reset command in docs/WALKTHROUGH.md means the same thing everywhere.
+name: library-loans
+
 services:
   db:
     image: postgres:16-alpine
@@ -30,6 +36,9 @@ services:
       timeout: 3s
       retries: 10
       start_period: 5s
+    # Same policy as the API. `depends_on` gates the first boot only, so without this a database
+    # that exits later stays down while the API restarts into connection failures indefinitely.
+    restart: unless-stopped
 
   api:
     build:
